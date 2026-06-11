@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Proficiency Learning - Setup</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --success-bg: #dcfce7;
+            --success-text: #166534;
+            --error-bg: #fee2e2;
+            --error-text: #991b1b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            border: 1px solid var(--border);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .info-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            word-break: break-all;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        button {
+            appearance: none;
+            background-color: var(--primary);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 10px 16px;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.secondary {
+            background-color: transparent;
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        button.secondary:hover {
+            background-color: var(--bg);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 1.5rem;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .status.success {
+            display: block;
+            background-color: var(--success-bg);
+            color: var(--success-text);
+        }
+
+        .status.error {
+            display: block;
+            background-color: var(--error-bg);
+            color: var(--error-text);
+        }
+
+        .log-container {
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            padding-top: 1.5rem;
+        }
+
+        .log-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        pre {
+            font-size: 0.75rem;
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 6px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .student-item {
+            padding: 8px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .student-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .delete-preview {
+            background: var(--error-bg);
+            color: var(--error-text);
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 16px;
+            font-size: 0.875rem;
+        }
+
+        .delete-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+            list-style: none;
+        }
+
+        .delete-list li {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Goal Form */
+        .goal-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .goal-form .full-width {
+            grid-column: span 2;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        input, select, textarea {
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        canvas {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
+        }
+
+        .unsaved-indicator {
+            color: var(--error-text);
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Open Proficiency Learning Setup</h1>
+            
+            <div class="tabs">
+                <div class="tab active" data-tab="setup">Storage & Students</div>
+                <div class="tab" data-tab="goals">Goal Management</div>
+            </div>
+
+            <div id="setup-tab" class="tab-content active">
+                <p>Connect your Google Drive to manage the "Open Proficiency Learning Data" folder.</p>
+
+                <div class="info-box">
+                    <span class="info-label">Local Folder ID</span>
+                    <span id="stored-id" class="info-value">None</span>
+                </div>
+
+                <div class="actions">
+                    <button id="authorize_button" class="hidden">Authorize & Connect</button>
+                    <div id="main_actions" class="actions hidden">
+                        <button id="search_button">Search for Existing Folder</button>
+                        <button id="signout_button" class="secondary">Disconnect</button>
+                    </div>
+                </div>
+
+                <div id="project_init_section" class="log-container hidden">
+                    <div class="log-title">Project Status</div>
+                    <div class="info-box">
+                        <span class="info-label">Root Data Spreadsheet</span>
+                        <span id="root_data_status" class="info-value">Checking...</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="info-label">Learners Folder</span>
+                        <span id="learners_folder_status" class="info-value">Checking...</span>
+                    </div>
+                    <div class="actions" style="flex-direction: row; gap: 8px;">
+                        <button id="initialize_project_button" class="hidden" style="flex: 1;">Initialize Project Structure</button>
+                        <button id="preview_delete_button" class="secondary" style="border-color: var(--error-text); color: var(--error-text); flex: 1;">Delete Entire Project</button>
+                    </div>
+
+                    <div id="delete_preview_section" class="delete-preview hidden">
+                        <strong>Confirm Deletion</strong>
+                        <p style="margin: 4px 0;">The following items will be PERMANENTLY deleted:</p>
+                        <ul id="delete_list" class="delete-list"></ul>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="confirm_delete_button" style="background-color: var(--error-text); flex: 1;">Confirm & Delete All</button>
+                            <button id="cancel_delete_button" class="secondary" style="flex: 1;">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="student_section" class="log-container hidden">
+                    <div class="log-title">Student Management</div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <input type="text" id="student_name_input" placeholder="Student Name" style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 6px;">
+                        <button id="add_student_button">Add Student</button>
+                    </div>
+                    <ul id="student_list" style="list-style: none; padding: 0; margin: 0; font-size: 0.875rem;">
+                        <li>No students loaded.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="goals-tab" class="tab-content">
+                <div id="goals_auth_warning">
+                    <p>Please authorize and select a project folder on the first tab.</p>
+                </div>
+                <div id="goals_editor" class="hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 style="font-size: 1.125rem; margin: 0;">Milestones & Goals <span id="unsaved_indicator" class="unsaved-indicator hidden">● Unsaved Changes</span></h2>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="save_goals_button" disabled>Save to Drive</button>
+                            <button id="new_goal_button" class="secondary">Add New Goal</button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 24px; align-items: flex-start;">
+                        <div style="flex: 0 0 400px;">
+                            <div class="field-group" style="margin-bottom: 16px;">
+                                <label>Select Goal to Edit</label>
+                                <select id="goal_selector">
+                                    <option value="">-- Create or select a goal --</option>
+                                </select>
+                            </div>
+
+                            <div id="goal_form_container" class="goal-form hidden" style="display: flex; flex-direction: column; gap: 12px;">
+                                <input type="hidden" id="goal_id">
+                                <div class="field-group">
+                                    <label>Goal Name</label>
+                                    <input type="text" id="goal_name" placeholder="e.g. Literacy Fundamentals">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                    <div class="field-group">
+                                        <label>Parent Goal</label>
+                                        <select id="goal_parent">
+                                            <option value="-1">None (Top Level)</option>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Width (Radians)</label>
+                                        <input type="number" id="goal_width" step="0.1" value="0.5">
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Start Level</label>
+                                        <input type="number" id="goal_start" step="0.1" value="0.0">
+                                    </div>
+                                    <div class="field-group">
+                                        <label>End Level</label>
+                                        <input type="number" id="goal_end" step="0.1" value="1.0">
+                                    </div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Position (Theta Offset from Parent/North)</label>
+                                    <input type="number" id="goal_pos" step="0.1" value="0.0">
+                                </div>
+                                <div class="field-group">
+                                    <label>Goal Color</label>
+                                    <input type="color" id="goal_color" value="#94a3b8">
+                                </div>
+                                <div class="field-group">
+                                    <label>Description</label>
+                                    <textarea id="goal_desc" rows="3"></textarea>
+                                </div>
+                                <div class="field-group">
+                                    <label>Rubric / Mastery Criteria</label>
+                                    <textarea id="goal_rubric" rows="3"></textarea>
+                                </div>
+                                <button id="delete_goal_button" class="secondary" style="color: var(--error-text); border-color: var(--error-text); width: 100%;">Remove Goal</button>
+                            </div>
+                        </div>
+
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="log-title">Visualization Preview</div>
+                            <canvas id="goal_canvas" width="800" height="800" style="max-width: 100%; height: auto;"></canvas>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
+                                Levels are represented by radial rings (1-12). Theta positions are offsets in radians.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="status" class="status"></div>
+
+            <div class="log-container">
+                <div class="log-title">Activity Log</div>
+                <pre id="log-output">Initializing...</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Google Identity Services (GIS) -->
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    <script src="goal_renderer.js"></script>
+
+    <script>
+        /**
+         * NOTE: The only currently configured trusted origin is http://localhost:8001.
+         */
+        const CLIENT_ID = '767614918217-040505l01huso2e5f42bavj5magf27p8.apps.googleusercontent.com';
+        
+        // Permissions needed
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets';
+        const FOLDER_NAME = 'Open Proficiency Learning Data';
+        const ROOT_DATA_NAME = 'Root Data';
+        const LEARNERS_FOLDER_NAME = 'Learners';
+        const STORAGE_KEY = 'opl_folder_id';
+        const ROOT_DATA_KEY = 'opl_root_data_id';
+        const LEARNERS_KEY = 'opl_learners_folder_id';
+
+        const authorizeButton = document.getElementById('authorize_button');
+        const signoutButton = document.getElementById('signout_button');
+        const searchButton = document.getElementById('search_button');
+        const createButton = document.getElementById('create_button');
+        const mainActions = document.getElementById('main_actions');
+        const storedIdEl = document.getElementById('stored-id');
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log-output');
+        const TOKEN_STORAGE_KEY = 'opl_access_token';
+
+        let tokenClient;
+        let accessToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+        let goalRenderer;
+        let goals = [];
+        let hasUnsavedChanges = false;
+
+        // Tab Switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.onclick = () => {
+                if (hasUnsavedChanges) {
+                    if (!confirm('You have unsaved changes in Goals. Switch anyway?')) return;
+                }
+                
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+                
+                if (tab.dataset.tab === 'goals') {
+                    initGoalsTab();
+                }
+            };
+        });
+
+        window.onbeforeunload = (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+
+        function setUnsaved(unsaved) {
+            hasUnsavedChanges = unsaved;
+            document.getElementById('unsaved_indicator').classList.toggle('hidden', !unsaved);
+            document.getElementById('save_goals_button').disabled = !unsaved;
+        }
+
+        async function initGoalsTab() {
+            const folderId = localStorage.getItem(STORAGE_KEY);
+            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            
+            if (!accessToken || !folderId || !rootDataId) {
+                document.getElementById('goals_auth_warning').classList.remove('hidden');
+                document.getElementById('goals_editor').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('goals_auth_warning').classList.add('hidden');
+            document.getElementById('goals_editor').classList.remove('hidden');
+
+            if (!goalRenderer) {
+                goalRenderer = new GoalRenderer(document.getElementById('goal_canvas'));
+            }
+
+            if (goals.length === 0) {
+                await loadGoals();
+            }
+            renderGoals();
+        }
+
+        async function loadGoals() {
+            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            log('Loading goals from Root Data...');
+            try {
+                const data = await sheetsRequest(rootDataId, '/values/A:Z');
+                const rows = data.values || [];
+                
+                goals = rows
+                    .filter(row => row[0] === 'Goal')
+                    .map(row => ({
+                        id: row[1],
+                        name: row[2],
+                        parentId: row[3],
+                        startLevel: row[4],
+                        endLevel: row[5],
+                        position: row[6],
+                        width: row[7],
+                        description: row[8] || '',
+                        rubric: row[9] || '',
+                        color: row[10] || '#94a3b8'
+                    }));
+                
+                log(`Loaded ${goals.length} goals.`);
+                console.log(goals);
+                updateGoalSelectors();
+                setUnsaved(false);
+            } catch (err) {
+                log(`Load goals error: ${err.message}`);
+                setStatus('Error loading goals.', 'error');
+            }
+        }
+
+        function updateGoalSelectors() {
+            const selector = document.getElementById('goal_selector');
+            const parentSelector = document.getElementById('goal_parent');
+            
+            const currentVal = selector.value;
+            const currentParentVal = parentSelector.value;
+
+            selector.innerHTML = '<option value="">-- Create or select a goal --</option>';
+            parentSelector.innerHTML = '<option value="-1">None (Top Level)</option>';
+
+            goals.sort((a, b) => a.name.localeCompare(b.name)).forEach(g => {
+                const opt = new Option(g.name, g.id);
+                selector.add(opt);
+                
+                const pOpt = new Option(g.name, g.id);
+                parentSelector.add(pOpt);
+            });
+
+            selector.value = currentVal;
+            parentSelector.value = currentParentVal;
+        }
+
+        let hoveredGoalId = null;
+        function renderGoals() {
+            if (goalRenderer) {
+                const selectedId = document.getElementById('goal_id').value;
+                goalRenderer.render(goals, selectedId, hoveredGoalId);
+            }
+        }
+
+        // Goal Form Interactions
+        document.getElementById('goal_selector').onchange = (e) => {
+            const id = e.target.value;
+            if (id) {
+                const goal = goals.find(g => g.id.toString() === id.toString());
+                if (goal) fillGoalForm(goal);
+            } else {
+                document.getElementById('goal_form_container').classList.add('hidden');
+            }
+            renderGoals();
+        };
+
+        document.getElementById('goal_canvas').onmousemove = (e) => {
+            if (!goalRenderer) return;
+            const rect = e.target.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (e.target.width / rect.width);
+            const y = (e.clientY - rect.top) * (e.target.height / rect.height);
+            
+            const id = goalRenderer.getGoalAt(x, y);
+            if (id !== hoveredGoalId) {
+                hoveredGoalId = id;
+                renderGoals();
+            }
+        };
+
+        document.getElementById('goal_canvas').onmouseleave = () => {
+            if (hoveredGoalId !== null) {
+                hoveredGoalId = null;
+                renderGoals();
+            }
+        };
+
+        document.getElementById('new_goal_button').onclick = () => {
+            const newGoal = {
+                id: Date.now().toString(),
+                name: 'New Goal',
+                parentId: '-1',
+                startLevel: '0',
+                endLevel: '1',
+                position: '0',
+                width: '0.5',
+                color: '#94a3b8',
+                description: '',
+                rubric: ''
+            };
+            goals.push(newGoal);
+            updateGoalSelectors();
+            document.getElementById('goal_selector').value = newGoal.id;
+            fillGoalForm(newGoal);
+            setUnsaved(true);
+            renderGoals();
+        };
+
+        function fillGoalForm(goal) {
+            document.getElementById('goal_id').value = goal.id;
+            document.getElementById('goal_name').value = goal.name;
+            document.getElementById('goal_parent').value = goal.parentId;
+            document.getElementById('goal_start').value = goal.startLevel;
+            document.getElementById('goal_end').value = goal.endLevel;
+            document.getElementById('goal_pos').value = goal.position;
+            document.getElementById('goal_width').value = goal.width;
+            document.getElementById('goal_color').value = goal.color || '#94a3b8';
+            document.getElementById('goal_desc').value = goal.description;
+            document.getElementById('goal_rubric').value = goal.rubric;
+            document.getElementById('goal_form_container').classList.remove('hidden');
+        }
+
+        // Auto-update in-memory goals on form change
+        ['goal_name', 'goal_parent', 'goal_start', 'goal_end', 'goal_pos', 'goal_width', 'goal_color', 'goal_desc', 'goal_rubric'].forEach(fieldId => {
+            document.getElementById(fieldId).oninput = () => {
+                const id = document.getElementById('goal_id').value;
+                const goal = goals.find(g => g.id.toString() === id.toString());
+                if (goal) {
+                    const field = fieldId.replace('goal_', '');
+                    const camelField = field === 'pos' ? 'position' : 
+                                       field === 'parent' ? 'parentId' : 
+                                       field === 'start' ? 'startLevel' :
+                                       field === 'end' ? 'endLevel' :
+                                       field === 'desc' ? 'description' : field;
+                    
+                    goal[camelField] = document.getElementById(fieldId).value;
+                    if (fieldId === 'goal_name') updateGoalSelectors();
+                    setUnsaved(true);
+                    renderGoals();
+                }
+            };
+        });
+
+        document.getElementById('delete_goal_button').onclick = () => {
+            const id = document.getElementById('goal_id').value;
+            if (confirm('Are you sure you want to remove this goal?')) {
+                goals = goals.filter(g => g.id.toString() !== id.toString());
+                updateGoalSelectors();
+                document.getElementById('goal_selector').value = '';
+                document.getElementById('goal_form_container').classList.add('hidden');
+                setUnsaved(true);
+                renderGoals();
+            }
+        };
+
+        document.getElementById('save_goals_button').onclick = async () => {
+            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            log('Saving all goals to Drive...');
+            setStatus('Saving...');
+            
+            try {
+                // 1. Fetch entire Root Data to preserve non-Goal rows
+                const data = await sheetsRequest(rootDataId, '/values/A:Z');
+                const existingRows = data.values || [];
+                
+                // 2. Filter out old Goal rows
+                const nonGoalRows = existingRows.filter(row => row[0] !== 'Goal');
+                
+                // 3. Prepare new Goal rows
+                const goalRows = goals.map(g => [
+                    'Goal', g.id, g.name, g.parentId, g.startLevel, g.endLevel, g.position, g.width, g.description, g.rubric, g.color
+                ]);
+                
+                const newRows = [...nonGoalRows, ...goalRows];
+
+                // 4. Overwrite entire sheet
+                // First clear it
+                await sheetsRequest(rootDataId, '/values/A:Z:clear', { method: 'POST' });
+                // Then write new content
+                await sheetsRequest(rootDataId, '/values/A1?valueInputOption=USER_ENTERED', {
+                    method: 'PUT',
+                    body: JSON.stringify({ values: newRows })
+                });
+
+                log('Goals saved successfully.');
+                setStatus('Goals saved to Drive.');
+                setUnsaved(false);
+            } catch (err) {
+                log(`Save error: ${err.message}`);
+                setStatus('Error saving goals.', 'error');
+            }
+        };
+
+        function log(msg) {
+            console.log(msg);
+            logEl.textContent += `\n> ${msg}`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function setStatus(msg, type = 'success') {
+            statusEl.innerHTML = msg;
+            statusEl.className = `status ${type}`;
+        }
+
+        function clearStatus() {
+            statusEl.textContent = '';
+            statusEl.className = 'status';
+        }
+
+        function updateDisplay() {
+            const folderId = localStorage.getItem(STORAGE_KEY);
+            storedIdEl.textContent = folderId || 'None';
+            
+            if (accessToken) {
+                authorizeButton.classList.add('hidden');
+                mainActions.classList.remove('hidden');
+                document.getElementById('project_init_section').classList.remove('hidden');
+                updateProjectStatus();
+            } else {
+                authorizeButton.classList.remove('hidden');
+                mainActions.classList.add('hidden');
+                document.getElementById('project_init_section').classList.add('hidden');
+                document.getElementById('student_section').classList.add('hidden');
+            }
+        }
+
+        async function updateProjectStatus() {
+            const folderId = localStorage.getItem(STORAGE_KEY);
+            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            const learnersId = localStorage.getItem(LEARNERS_KEY);
+            
+            const rootStatusEl = document.getElementById('root_data_status');
+            const learnersStatusEl = document.getElementById('learners_folder_status');
+            const initBtn = document.getElementById('initialize_project_button');
+
+            if (!folderId) {
+                rootStatusEl.textContent = 'Project folder not found';
+                learnersStatusEl.textContent = 'Project folder not found';
+                initBtn.textContent = 'Initialize New Project';
+                initBtn.classList.remove('hidden');
+                document.getElementById('student_section').classList.add('hidden');
+                return;
+            }
+
+            rootStatusEl.textContent = rootDataId ? `Found (${rootDataId})` : 'Missing';
+            learnersStatusEl.textContent = learnersId ? `Found (${learnersId})` : 'Missing';
+
+            if (rootDataId && learnersId) {
+                initBtn.classList.add('hidden');
+                document.getElementById('student_section').classList.remove('hidden');
+                loadStudents();
+            } else {
+                initBtn.textContent = 'Initialize Project Structure';
+                initBtn.classList.remove('hidden');
+                document.getElementById('student_section').classList.add('hidden');
+            }
+        }
+
+        function gisLoaded() {
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (resp) => {
+                        if (resp.error !== undefined) {
+                            log(`Auth error: ${resp.error}`);
+                            setStatus(`Authentication failed: ${resp.error}`, 'error');
+                            return;
+                        }
+                        accessToken = resp.access_token;
+                        sessionStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+                        log('Authenticated successfully.');
+                        updateDisplay();
+                        searchForFolder();
+                    },
+                });
+                log('Google Identity Services initialized.');
+                
+                if (accessToken) {
+                    log('Resuming session from storage...');
+                    updateDisplay();
+                    searchForFolder();
+                } else {
+                    updateDisplay();
+                }
+            } catch (err) {
+                log(`GIS Init Error: ${err.message}`);
+                setStatus('Failed to initialize Google Identity Services.', 'error');
+            }
+        }
+
+        authorizeButton.onclick = () => {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        };
+
+        signoutButton.onclick = () => {
+            if (accessToken) {
+                google.accounts.oauth2.revoke(accessToken);
+                accessToken = null;
+                sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+                log('Signed out and session cleared.');
+                clearStatus();
+                updateDisplay();
+            }
+        };
+
+        searchButton.onclick = () => searchForFolder();
+        document.getElementById('initialize_project_button').onclick = () => initializeProject();
+        document.getElementById('preview_delete_button').onclick = () => previewDelete();
+        document.getElementById('confirm_delete_button').onclick = () => confirmDelete();
+        document.getElementById('cancel_delete_button').onclick = () => {
+            document.getElementById('delete_preview_section').classList.add('hidden');
+        };
+        document.getElementById('add_student_button').onclick = () => {
+            const nameInput = document.getElementById('student_name_input');
+            const name = nameInput.value.trim();
+            if (name) {
+                addStudent(name);
+                nameInput.value = '';
+            }
+        };
+
+        async function driveRequest(path, options = {}) {
+            const url = `https://www.googleapis.com/drive/v3${path}`;
+            const headers = {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+
+            const response = await fetch(url, { ...options, headers });
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.error?.message || 'Drive API request failed');
+            }
+            
+            if (response.status === 204) return null;
+            return response.json();
+        }
+
+        async function sheetsRequest(spreadsheetId, path, options = {}) {
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}${path}`;
+            const headers = {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+
+            const response = await fetch(url, { ...options, headers });
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.error?.message || 'Sheets API request failed');
+            }
+
+            if (response.status === 204) return null;
+            return response.json();
+        }
+
+        async function searchForFolder() {
+            log(`Searching for "${FOLDER_NAME}"...`);
+            clearStatus();
+            try {
+                const query = encodeURIComponent(`name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+                const data = await driveRequest(`/files?q=${query}&fields=files(id,name,webViewLink)`);
+                
+                const files = data.files;
+                if (files && files.length > 0) {
+                    const folder = files[0];
+                    log(`Found: ${folder.id}`);
+                    localStorage.setItem(STORAGE_KEY, folder.id);
+                    
+                    // Search for Root Data and Learners folder inside
+                    await searchProjectComponents(folder.id);
+                    
+                    updateDisplay();
+                    setStatus(`Folder found! <a href="${folder.webViewLink}" target="_blank">View in Drive</a>`);
+                } else {
+                    log('Folder not found.');
+                    setStatus('Folder not found. You can create a new one.', 'error');
+                    localStorage.removeItem(STORAGE_KEY);
+                    localStorage.removeItem(ROOT_DATA_KEY);
+                    localStorage.removeItem(LEARNERS_KEY);
+                    updateDisplay();
+                }
+            } catch (err) {
+                log(`Search error: ${err.message}`);
+                setStatus('Error searching for folder.', 'error');
+            }
+        }
+
+        async function searchProjectComponents(parentId) {
+            log('Searching for project components...');
+            const query = encodeURIComponent(`'${parentId}' in parents and trashed = false`);
+            const data = await driveRequest(`/files?q=${query}&fields=files(id,name,mimeType)`);
+            
+            let rootDataId = null;
+            let learnersId = null;
+
+            for (const file of data.files) {
+                if (file.name === ROOT_DATA_NAME && file.mimeType === 'application/vnd.google-apps.spreadsheet') {
+                    rootDataId = file.id;
+                } else if (file.name === LEARNERS_FOLDER_NAME && file.mimeType === 'application/vnd.google-apps.folder') {
+                    learnersId = file.id;
+                }
+            }
+
+            if (rootDataId) localStorage.setItem(ROOT_DATA_KEY, rootDataId);
+            else localStorage.removeItem(ROOT_DATA_KEY);
+
+            if (learnersId) localStorage.setItem(LEARNERS_KEY, learnersId);
+            else localStorage.removeItem(LEARNERS_KEY);
+        }
+
+        async function createNewFolder() {
+            log('Creating folder...');
+            clearStatus();
+            try {
+                const data = await driveRequest('/files?fields=id,name,webViewLink', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: FOLDER_NAME,
+                        mimeType: 'application/vnd.google-apps.folder'
+                    })
+                });
+                
+                log(`Created: ${data.id}`);
+                localStorage.setItem(STORAGE_KEY, data.id);
+                localStorage.removeItem(ROOT_DATA_KEY);
+                localStorage.removeItem(LEARNERS_KEY);
+                updateDisplay();
+
+                setStatus(`Folder created! <a href="${data.webViewLink}" target="_blank">View in Drive</a>`);
+            } catch (err) {
+                log(`Create error: ${err.message}`);
+                setStatus('Error creating folder.', 'error');
+            }
+        }
+
+        async function initializeProject() {
+            log('Initializing project components...');
+            let parentId = localStorage.getItem(STORAGE_KEY);
+
+            try {
+                if (!parentId) {
+                    log(`Creating root folder "${FOLDER_NAME}"...`);
+                    const folder = await driveRequest('/files?fields=id', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: FOLDER_NAME,
+                            mimeType: 'application/vnd.google-apps.folder'
+                        })
+                    });
+                    parentId = folder.id;
+                    localStorage.setItem(STORAGE_KEY, parentId);
+                    log(`Root folder created: ${parentId}`);
+                }
+
+                let rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+                let learnersId = localStorage.getItem(LEARNERS_KEY);
+
+                if (!rootDataId) {
+                    log('Creating Root Data spreadsheet...');
+                    const rd = await driveRequest('/files?fields=id', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: ROOT_DATA_NAME,
+                            mimeType: 'application/vnd.google-apps.spreadsheet',
+                            parents: [parentId]
+                        })
+                    });
+                    rootDataId = rd.id;
+                    localStorage.setItem(ROOT_DATA_KEY, rootDataId);
+                    log(`Root Data created: ${rootDataId}`);
+
+                    // Initialize Root Data with warning comment
+                    await sheetsRequest(rootDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            values: [['Comment', "This file is used by the Open Proficiency Learning system. Please don't manually make any changes."]]
+                        })
+                    });
+                }
+
+                if (!learnersId) {
+                    log('Creating Learners folder...');
+                    const l = await driveRequest('/files?fields=id', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: LEARNERS_FOLDER_NAME,
+                            mimeType: 'application/vnd.google-apps.folder',
+                            parents: [parentId]
+                        })
+                    });
+                    learnersId = l.id;
+                    localStorage.setItem(LEARNERS_KEY, learnersId);
+                    log(`Learners folder created: ${learnersId}`);
+                }
+
+                updateDisplay();
+                setStatus('Project initialized successfully.');
+            } catch (err) {
+                log(`Init error: ${err.message}`);
+                setStatus('Error initializing project.', 'error');
+            }
+        }
+
+        async function loadStudents() {
+            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            if (!rootDataId) return;
+
+            log('Loading students...');
+            const listEl = document.getElementById('student_list');
+            listEl.innerHTML = '<li>Loading...</li>';
+
+            try {
+                const data = await sheetsRequest(rootDataId, '/values/A:Z');
+                const rows = data.values || [];
+                const students = rows.filter(row => row[0] === 'Student');
+
+                listEl.innerHTML = '';
+                if (students.length === 0) {
+                    listEl.innerHTML = '<li>No students found.</li>';
+                } else {
+                    students.forEach(s => {
+                        const li = document.createElement('li');
+                        li.className = 'student-item';
+                        li.textContent = s[1]; // Name
+                        listEl.appendChild(li);
+                    });
+                }
+            } catch (err) {
+                log(`Load students error: ${err.message}`);
+                listEl.innerHTML = '<li>Error loading students.</li>';
+            }
+        }
+
+        async function addStudent(name) {
+            log(`Adding student: ${name}...`);
+            const learnersId = localStorage.getItem(LEARNERS_KEY);
+            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            
+            try {
+                // 1. Create student folder
+                log('Creating student folder...');
+                const studentFolder = await driveRequest('/files?fields=id', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: name,
+                        mimeType: 'application/vnd.google-apps.folder',
+                        parents: [learnersId]
+                    })
+                });
+                const folderId = studentFolder.id;
+
+                // 2. Create Learner Data spreadsheet
+                log('Creating Learner Data spreadsheet...');
+                const learnerData = await driveRequest('/files?fields=id', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: 'Learner Data',
+                        mimeType: 'application/vnd.google-apps.spreadsheet',
+                        parents: [folderId]
+                    })
+                });
+                const learnerDataId = learnerData.id;
+
+                // Initialize Learner Data with warning comment and Student Name
+                await sheetsRequest(learnerDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        values: [
+                            ['Comment', "This file is used by the Open Proficiency Learning system. Please don't manually make any changes."],
+                            ['Student Name', name]
+                        ]
+                    })
+                });
+
+                // 3. Create Artifacts folder
+                log('Creating Artifacts folder...');
+                const artifactsFolder = await driveRequest('/files?fields=id', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: 'Artifacts',
+                        mimeType: 'application/vnd.google-apps.folder',
+                        parents: [folderId]
+                    })
+                });
+                const artifactsId = artifactsFolder.id;
+
+                // 4. Update Root Data
+                log('Updating Root Data...');
+                await sheetsRequest(rootDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        values: [['Student', name, folderId, learnerDataId, artifactsId]]
+                    })
+                });
+
+                log('Student added successfully.');
+                setStatus(`Student "${name}" added!`);
+                loadStudents();
+            } catch (err) {
+                log(`Add student error: ${err.message}`);
+                setStatus(`Error adding student: ${err.message}`, 'error');
+            }
+        }
+
+        let itemsToDelete = [];
+
+        async function previewDelete() {
+            const folderId = localStorage.getItem(STORAGE_KEY);
+            if (!folderId) return;
+
+            log('Scanning project for deletion...');
+            const previewSection = document.getElementById('delete_preview_section');
+            const listEl = document.getElementById('delete_list');
+            
+            previewSection.classList.remove('hidden');
+            listEl.innerHTML = '<li>Scanning...</li>';
+            itemsToDelete = [];
+
+            try {
+                // Get the root folder itself
+                const rootFolder = await driveRequest(`/files/${folderId}?fields=id,name`);
+                itemsToDelete.push(rootFolder);
+
+                await recursiveList(folderId, itemsToDelete);
+                
+                listEl.innerHTML = '';
+                itemsToDelete.forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = item.name;
+                    li.title = item.id;
+                    listEl.appendChild(li);
+                });
+            } catch (err) {
+                log(`Scan error: ${err.message}`);
+                setStatus('Error scanning for deletion.', 'error');
+            }
+        }
+
+        async function recursiveList(parentId, list) {
+            const query = encodeURIComponent(`'${parentId}' in parents and trashed = false`);
+            const data = await driveRequest(`/files?q=${query}&fields=files(id,name,mimeType)`);
+            
+            for (const file of data.files) {
+                list.push(file);
+                if (file.mimeType === 'application/vnd.google-apps.folder') {
+                    await recursiveList(file.id, list);
+                }
+            }
+        }
+
+        async function confirmDelete() {
+            const folderId = localStorage.getItem(STORAGE_KEY);
+            if (!folderId) return;
+
+            log('Deleting project...');
+            try {
+                // We only actually need to delete the root folder, Drive handles the rest.
+                await driveRequest(`/files/${folderId}`, { method: 'DELETE' });
+                
+                log('Project deleted.');
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(ROOT_DATA_KEY);
+                localStorage.removeItem(LEARNERS_KEY);
+                
+                document.getElementById('delete_preview_section').classList.add('hidden');
+                updateDisplay();
+                setStatus('Project deleted successfully.');
+            } catch (err) {
+                log(`Delete error: ${err.message}`);
+                setStatus('Error deleting project.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

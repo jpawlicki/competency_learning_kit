@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Proficiency Learning - Progress Report</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --error-bg: #fee2e2;
+            --error-text: #991b1b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 40px 20px;
+        }
+
+        .header {
+            margin-bottom: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        h1 { font-size: 1.875rem; margin: 0; }
+        p { color: var(--text-muted); margin: 4px 0 0 0; }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            border: 1px solid var(--border);
+            display: flex;
+            gap: 40px;
+        }
+
+        .controls {
+            flex: 0 0 300px;
+        }
+
+        .visualization {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        button {
+            appearance: none;
+            background-color: var(--primary);
+            color: white;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            text-align: left;
+        }
+
+        button:hover { opacity: 0.9; }
+        button.secondary {
+            background-color: white;
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        canvas {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
+        }
+
+        .info-box {
+            background: #f1f5f9;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin-top: 24px;
+        }
+
+        .status {
+            margin-top: 1rem;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .status.error {
+            background-color: var(--error-bg);
+            color: var(--error-text);
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Learner Progress Report</h1>
+                <p>Simulating evidence-based proficiency scores</p>
+            </div>
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <button id="authorize_button" class="hidden" style="text-align: center;">Connect Drive</button>
+                <a href="setup.html" style="font-size: 0.875rem; color: var(--primary); text-decoration: none; font-weight: 600;">&larr; Back to Setup</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="controls">
+                <div id="auth_notice" class="status error hidden" style="margin-top: 0; margin-bottom: 24px;">
+                    Please connect Google Drive to load actual goals.
+                </div>
+
+                <span class="section-title">Presets & Simulation</span>
+                <div class="preset-grid">
+                    <button class="sim-btn" onclick="generateReport('typical-5')">Typical Level 5</button>
+                    <button class="sim-btn" onclick="generateReport('skewed-5')">Skewed Level 5</button>
+                    <button class="sim-btn" onclick="generateReport('typical-8')">Typical Level 8</button>
+                    <button class="sim-btn" onclick="generateReport('skewed-8')">Skewed Level 8</button>
+                    <button class="sim-btn secondary" onclick="generateReport('random')">Completely Random</button>
+                </div>
+
+                <div id="simulation-stats" class="info-box" style="display: none;">
+                    <span class="section-title" style="margin-bottom: 8px;">Simulation Data</span>
+                    <div id="stats-content"></div>
+                </div>
+
+                <div id="loading_status" class="status hidden" style="background: #e0f2fe; color: #0369a1;">
+                    Loading goals...
+                </div>
+            </div>
+
+            <div class="visualization">
+                <canvas id="report_canvas" width="800" height="800"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- External scripts -->
+    <script src="goal_renderer.js"></script>
+    <script src="report.js"></script>
+
+    <!-- Main script block: Defined BEFORE GIS to ensure all functions exist for callbacks -->
+    <script>
+        const CLIENT_ID = '767614918217-040505l01huso2e5f42bavj5magf27p8.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets';
+        const STORAGE_KEY = 'opl_folder_id';
+        const ROOT_DATA_KEY = 'opl_root_data_id';
+        const TOKEN_STORAGE_KEY = 'opl_access_token';
+        const ROOT_DATA_NAME = 'Root Data';
+
+        let goals = [];
+        let renderer;
+        let tokenClient;
+        let accessToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+        let currentHoverId = null;
+        let currentScores = null;
+
+        function updateDisplay() {
+            const authBtn = document.getElementById('authorize_button');
+            const authNotice = document.getElementById('auth_notice');
+            
+            if (accessToken) {
+                authBtn.classList.add('hidden');
+                authNotice.classList.add('hidden');
+            } else {
+                authBtn.classList.remove('hidden');
+                authNotice.classList.remove('hidden');
+            }
+        }
+
+        async function driveRequest(path, options = {}) {
+            const url = `https://www.googleapis.com/drive/v3${path}`;
+            const headers = {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (!response.ok) throw new Error('Drive API request failed');
+            return response.status === 204 ? null : response.json();
+        }
+
+        async function sheetsRequest(spreadsheetId, path, options = {}) {
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}${path}`;
+            const headers = {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (!response.ok) throw new Error('Sheets API request failed');
+            return response.status === 204 ? null : response.json();
+        }
+
+        function loadDummyData() {
+            goals = [
+                { id: '1', name: 'Communication', startLevel: '0', endLevel: '12', position: '0', width: '1.5', color: '#3b82f6' },
+                { id: '2', name: 'Critical Thinking', startLevel: '0', endLevel: '12', position: '1.6', width: '1.5', color: '#ef4444' },
+                { id: '3', name: 'Collaboration', startLevel: '0', endLevel: '12', position: '3.2', width: '1.5', color: '#10b981' },
+                { id: '4', name: 'Creativity', startLevel: '0', endLevel: '12', position: '4.8', width: '1.4', color: '#f59e0b' }
+            ];
+        }
+
+        async function loadGoals(rootDataId) {
+            try {
+                const data = await sheetsRequest(rootDataId, '/values/A:Z');
+                const rows = data.values || [];
+                goals = rows.filter(r => r[0] === 'Goal').map(r => ({
+                    id: r[1],
+                    name: r[2],
+                    parentId: r[3],
+                    startLevel: r[4],
+                    endLevel: r[5],
+                    position: r[6],
+                    width: r[7],
+                    color: r[10] || '#94a3b8'
+                }));
+            } catch (err) {
+                console.error("Error loading goals:", err);
+                loadDummyData();
+            }
+        }
+
+        function renderCurrent() {
+            if (renderer && goals.length > 0) {
+                renderer.render(goals, null, currentHoverId, currentScores);
+            }
+        }
+
+        function generateReport(type) {
+            if (goals.length === 0) return;
+
+            const now = Date.now();
+            const oneYear = 365 * 24 * 60 * 60 * 1000;
+            const simulationTargetLevel = type.includes('5') ? 5 : type.includes('8') ? 8 : 12;
+            const startTime = now; 
+            const endTime = now + oneYear;
+            const evidence = [];
+
+            const goalMap = new Map();
+            goals.forEach(g => goalMap.set(g.id.toString(), g));
+
+            const getAbsTheta = (g) => {
+                let theta = parseFloat(g.position) || 0;
+                let current = g;
+                while (current.parentId && current.parentId !== '-1') {
+                    const parent = goalMap.get(current.parentId.toString());
+                    if (!parent) break;
+                    theta += parseFloat(parent.position) || 0;
+                    current = parent;
+                }
+                return theta;
+            };
+
+            const processedGoals = goals.map(g => {
+                const absTheta = getAbsTheta(g);
+                const width = parseFloat(g.width) || 0;
+                return {
+                    ...g,
+                    absTheta: absTheta,
+                    absEndTheta: absTheta + width,
+                    startLevel: parseFloat(g.startLevel) || 0,
+                    endLevel: parseFloat(g.endLevel) || 0
+                };
+            });
+
+            const goalsWithEvidence = new Set();
+            processedGoals.forEach(goal => {
+                const goalMid = (goal.startLevel + goal.endLevel) / 2;
+                let probability = 0;
+                if (goalMid < simulationTargetLevel - 2) probability = 0.9;
+                else if (goalMid < simulationTargetLevel + 2) probability = 0.5;
+                else probability = 0.1;
+                if (type === 'random') probability = 0.5;
+                if (Math.random() < probability) {
+                    goalsWithEvidence.add(goal.id.toString());
+                    processedGoals.forEach(b => {
+                        if (b.id === goal.id) return;
+                        const isOutward = goal.startLevel >= b.endLevel;
+                        const isContained = goal.absTheta >= b.absTheta && goal.absEndTheta <= b.absEndTheta;
+                        if (isOutward && isContained) goalsWithEvidence.add(b.id.toString());
+                    });
+                }
+            });
+
+            goalsWithEvidence.forEach(goalId => {
+                const goal = processedGoals.find(g => g.id.toString() === goalId);
+                const goalMid = (goal.startLevel + goal.endLevel) / 2;
+                let baseTimestamp;
+                if (goalMid >= simulationTargetLevel) {
+                    baseTimestamp = startTime + (Math.random() * oneYear);
+                } else {
+                    const yearsAgo = simulationTargetLevel - Math.floor(goalMid);
+                    baseTimestamp = startTime - (yearsAgo * oneYear) + (Math.random() * oneYear);
+                }
+
+                const count = Math.floor(Math.random() * 5) + 1;
+                for (let i = 0; i < count; i++) {
+                    let baseScore = 70;
+                    if (type.includes('skewed')) baseScore = Math.random() < 0.5 ? 30 : 95;
+                    else baseScore = 60 + Math.random() * 30;
+                    const timestamp = baseTimestamp + (Math.random() * (oneYear / 10)) - (oneYear / 20);
+                    evidence.push({ timestamp: new Date(timestamp).toISOString(), ratings: `${goalId},${baseScore}` });
+
+                    if (baseScore > 75) {
+                        processedGoals.forEach(b => {
+                            if (b.id.toString() === goalId) return;
+                            const isOutward = goal.startLevel >= b.endLevel;
+                            const isContained = goal.absTheta >= b.absTheta && goal.absEndTheta <= b.absEndTheta;
+                            if (isOutward && isContained) {
+                                evidence.push({ timestamp: new Date(startTime + Math.random() * oneYear).toISOString(), ratings: `${b.id},100` });
+                            }
+                        });
+                    }
+                }
+            });
+
+            processedGoals.forEach(g => {
+                if (!goalsWithEvidence.has(g.id.toString()) && g.startLevel <= simulationTargetLevel) {
+                    evidence.push({ timestamp: new Date(startTime + Math.random() * oneYear).toISOString(), ratings: `${g.id},0` });
+                }
+            });
+
+            currentScores = calculateGoalScores(goals, evidence, startTime, endTime);
+            document.getElementById('simulation-stats').style.display = 'block';
+            document.getElementById('stats-content').innerHTML = `
+                <div style="margin-bottom: 4px;"><strong>Preset:</strong> ${type}</div>
+                <div style="margin-bottom: 4px;"><strong>Evidence items:</strong> ${evidence.length}</div>
+                <div style="margin-bottom: 4px;"><strong>Goals with scores:</strong> ${Object.keys(currentScores).length}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
+                    Range: ${new Date(startTime).toLocaleDateString()} - ${new Date(endTime).toLocaleDateString()}
+                </div>
+            `;
+            renderCurrent();
+        }
+
+        async function initProject() {
+            document.getElementById('loading_status').classList.remove('hidden');
+            let rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            if (!rootDataId) {
+                try {
+                    const folderId = localStorage.getItem(STORAGE_KEY);
+                    if (folderId) {
+                        const query = encodeURIComponent(`'${folderId}' in parents and name = '${ROOT_DATA_NAME}' and trashed = false`);
+                        const data = await driveRequest(`/files?q=${query}`);
+                        if (data.files && data.files.length > 0) {
+                            rootDataId = data.files[0].id;
+                            localStorage.setItem(ROOT_DATA_KEY, rootDataId);
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            if (rootDataId) await loadGoals(rootDataId);
+            else loadDummyData();
+            document.getElementById('loading_status').classList.add('hidden');
+            generateReport('typical-5');
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (resp) => {
+                    if (resp.error) return;
+                    accessToken = resp.access_token;
+                    sessionStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+                    updateDisplay();
+                    initProject();
+                },
+            });
+            updateDisplay();
+            if (accessToken) initProject();
+        }
+
+        // DOM Setup
+        document.addEventListener('DOMContentLoaded', () => {
+            renderer = new GoalRenderer(document.getElementById('report_canvas'));
+            const canvas = document.getElementById('report_canvas');
+            canvas.onmousemove = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+                const id = renderer.getGoalAt(x, y);
+                if (id !== currentHoverId) {
+                    currentHoverId = id;
+                    renderCurrent();
+                }
+            };
+            canvas.onmouseleave = () => {
+                currentHoverId = null;
+                renderCurrent();
+            };
+            document.getElementById('authorize_button').onclick = () => {
+                tokenClient.requestAccessToken({ prompt: 'consent' });
+            };
+            if (!accessToken) loadDummyData();
+            updateDisplay();
+        });
+    </script>
+
+    <!-- Load GIS script -->
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+</body>
+</html>
