@@ -305,6 +305,7 @@
             <div class="tabs">
                 <div class="tab active" data-tab="setup">Storage & Students</div>
                 <div class="tab" data-tab="goals">Goal Management</div>
+                <div class="tab" data-tab="evidence">Evidence</div>
             </div>
 
             <div id="setup-tab" class="tab-content active">
@@ -440,6 +441,51 @@
                 </div>
             </div>
 
+            <div id="evidence-tab" class="tab-content">
+                <div id="evidence_auth_warning">
+                    <p>Please authorize and select a project folder on the first tab.</p>
+                </div>
+                <div id="evidence_manager" class="hidden">
+                    <h2 style="font-size: 1.125rem; margin-bottom: 16px;">Add Evidence</h2>
+                    
+                    <div style="max-width: 800px;">
+                        <div class="field-group" style="margin-bottom: 16px;">
+                            <label>Select Student</label>
+                            <select id="evidence_student_selector">
+                                <option value="">-- Select a student --</option>
+                            </select>
+                        </div>
+
+                        <div id="evidence_form" class="hidden" style="display: flex; flex-direction: column; gap: 16px;">
+                            <div class="field-group">
+                                <label>Evidence Name</label>
+                                <input type="text" id="evidence_name" placeholder="e.g. Reading Assessment Jan 2024">
+                            </div>
+                            
+                            <div class="field-group">
+                                <label>Goal Ratings</label>
+                                <div id="goal_ratings_container" style="display: flex; flex-direction: column; gap: 8px;">
+                                    <!-- Goal rating rows will be added here -->
+                                </div>
+                                <button id="add_goal_rating_button" class="secondary" style="margin-top: 8px; width: fit-content;">+ Add Goal Rating</button>
+                            </div>
+
+                            <div class="field-group">
+                                <label>Educator's Note / Narrative</label>
+                                <textarea id="evidence_note" rows="3"></textarea>
+                            </div>
+
+                            <div class="field-group">
+                                <label>Artifact Drive IDs (semi-colon separated)</label>
+                                <input type="text" id="evidence_artifacts" placeholder="ID1; ID2">
+                            </div>
+
+                            <button id="submit_evidence_button">Submit Evidence</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="status" class="status"></div>
 
             <div class="log-container">
@@ -482,6 +528,7 @@
         let accessToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
         let goalRenderer;
         let goals = [];
+        let students = [];
         let hasUnsavedChanges = false;
 
         // Tab Switching
@@ -499,6 +546,8 @@
                 
                 if (tab.dataset.tab === 'goals') {
                     initGoalsTab();
+                } else if (tab.dataset.tab === 'evidence') {
+                    initEvidenceTab();
                 }
             };
         });
@@ -868,6 +917,137 @@
             }
         };
 
+        async function initEvidenceTab() {
+            const folderId = localStorage.getItem(STORAGE_KEY);
+            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            
+            if (!accessToken || !folderId || !rootDataId) {
+                document.getElementById('evidence_auth_warning').classList.remove('hidden');
+                document.getElementById('evidence_manager').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('evidence_auth_warning').classList.add('hidden');
+            document.getElementById('evidence_manager').classList.remove('hidden');
+
+            if (goals.length === 0) {
+                await loadGoals();
+            }
+            updateEvidenceStudentSelector();
+        }
+
+        function updateEvidenceStudentSelector() {
+            const selector = document.getElementById('evidence_student_selector');
+            const currentVal = selector.value;
+            selector.innerHTML = '<option value="">-- Select a student --</option>';
+            students.forEach(s => {
+                const opt = new Option(s.name, s.learnerDataId);
+                selector.add(opt);
+            });
+            selector.value = currentVal;
+        }
+
+        document.getElementById('evidence_student_selector').onchange = (e) => {
+            const learnerDataId = e.target.value;
+            if (learnerDataId) {
+                document.getElementById('evidence_form').classList.remove('hidden');
+            } else {
+                document.getElementById('evidence_form').classList.add('hidden');
+            }
+        };
+
+        document.getElementById('add_goal_rating_button').onclick = () => {
+            addGoalRatingRow();
+        };
+
+        function addGoalRatingRow() {
+            const container = document.getElementById('goal_ratings_container');
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.gap = '8px';
+            row.className = 'goal-rating-row';
+
+            const goalSelect = document.createElement('select');
+            goalSelect.style.flex = '2';
+            goalSelect.innerHTML = '<option value="">-- Select Goal --</option>';
+            goals.sort((a,b) => a.name.localeCompare(b.name)).forEach(g => {
+                const opt = new Option(g.name, g.id);
+                goalSelect.add(opt);
+            });
+
+            const ratingInput = document.createElement('input');
+            ratingInput.type = 'number';
+            ratingInput.placeholder = 'Rating (0-100)';
+            ratingInput.style.flex = '1';
+            ratingInput.min = '0';
+            ratingInput.max = '100';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'secondary';
+            removeBtn.textContent = '✕';
+            removeBtn.onclick = () => row.remove();
+
+            row.appendChild(goalSelect);
+            row.appendChild(ratingInput);
+            row.appendChild(removeBtn);
+            container.appendChild(row);
+        }
+
+        document.getElementById('submit_evidence_button').onclick = async () => {
+            const learnerDataId = document.getElementById('evidence_student_selector').value;
+            const name = document.getElementById('evidence_name').value.trim();
+            const note = document.getElementById('evidence_note').value.trim();
+            const artifacts = document.getElementById('evidence_artifacts').value.trim();
+            
+            if (!learnerDataId || !name) {
+                alert('Please select a student and provide an evidence name.');
+                return;
+            }
+
+            const ratings = Array.from(document.querySelectorAll('.goal-rating-row')).map(row => {
+                const goalId = row.querySelector('select').value;
+                const rating = row.querySelector('input').value;
+                if (goalId && rating) return `${goalId},${rating}`;
+                return null;
+            }).filter(r => r !== null).join(';');
+
+            if (!ratings) {
+                alert('Please add at least one goal rating.');
+                return;
+            }
+
+            const evidenceId = Date.now().toString();
+            const timestamp = new Date().toISOString();
+            const userEmail = 'authenticated-user';
+
+            // Evidence row: 'Evidence', ID, Name, GoalRatings, Artifacts, Note, Timestamp, Replaces, EntryAccount, ArchivedTS, ArchivedAccount
+            const newRow = ['Evidence', evidenceId, name, ratings, artifacts, note, timestamp, '', userEmail, '', ''];
+
+            log(`Submitting evidence for student...`);
+            setStatus('Submitting evidence...');
+            
+            try {
+                await sheetsRequest(learnerDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        values: [newRow]
+                    })
+                });
+                
+                log('Evidence submitted successfully.');
+                setStatus(`Evidence "${name}" added!`);
+                
+                // Reset form
+                document.getElementById('evidence_name').value = '';
+                document.getElementById('evidence_note').value = '';
+                document.getElementById('evidence_artifacts').value = '';
+                document.getElementById('goal_ratings_container').innerHTML = '';
+            } catch (err) {
+                log(`Submit evidence error: ${err.message}`);
+                setStatus(`Error submitting evidence: ${err.message}`, 'error');
+            }
+        };
+
         async function driveRequest(path, options = {}) {
             const url = `https://www.googleapis.com/drive/v3${path}`;
             const headers = {
@@ -1063,7 +1243,12 @@
             try {
                 const data = await sheetsRequest(rootDataId, '/values/A:Z');
                 const rows = data.values || [];
-                const students = rows.filter(row => row[0] === 'Student');
+                students = rows.filter(row => row[0] === 'Student').map(row => ({
+                    name: row[1],
+                    folderId: row[2],
+                    learnerDataId: row[3],
+                    artifactsId: row[4]
+                }));
 
                 listEl.innerHTML = '';
                 if (students.length === 0) {
@@ -1072,7 +1257,7 @@
                     students.forEach(s => {
                         const li = document.createElement('li');
                         li.className = 'student-item';
-                        li.textContent = s[1]; // Name
+                        li.textContent = s.name;
                         listEl.appendChild(li);
                     });
                 }

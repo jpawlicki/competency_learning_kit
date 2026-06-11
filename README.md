@@ -75,14 +75,15 @@ the types are different:
   - `Write Permission`:  An e-mail address of an account that should be able to
     write data about this specific learner (e.g. a trusted tutor). This need
     not repeat accounts from the Global Write Permission.
-  - `Evidence`: A unique ID, the name of a piece of evidence representing progress toward a
-    goal, a semi-colon-separated list of (goal-id, rating) pairs that the
-    evidence counts towards, a semi-colon-separated list of Drive document IDs
-    (artifacts) providing the evidence, an educator's note / comment (a
-    string), a timestamp of entry, comma-separated list of IDs that this
-    evidence replaces or supercedes, the account (e-mail) of the person
-    entering the evidence. Ratings are in the form of a numeric score from 0 to
-    100.
+  - `Evidence`: A unique ID, the name of a piece of evidence representing
+    progress toward a goal, a semi-colon-separated list of (goal-id, rating)
+    pairs that the evidence counts towards, a semi-colon-separated list of
+    Drive document IDs (artifacts) providing the evidence, an educator's note /
+    comment (a string), a timestamp of entry, comma-separated list of IDs that
+    this evidence replaces or supercedes, the account (e-mail) of the person
+    entering the evidence, the timestamp it was archived, the account (e-mail)
+    of the person who archived it. Ratings are in the form of a numeric score
+    from 0 to 100.
 
 ## Development
 
