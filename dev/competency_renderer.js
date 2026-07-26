@@ -1,8 +1,8 @@
 /**
- * Goal Renderer for Open Proficiency Learning
- * Renders goals as slices in polar coordinates.
+ * Competency Renderer for Competency Learning Kit
+ * Renders competencies as slices in polar coordinates.
  */
-class GoalRenderer {
+class CompetencyRenderer {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
@@ -19,26 +19,26 @@ class GoalRenderer {
     }
 
     /**
-     * Renders a list of goals.
-     * @param {Array} goals - List of goal objects
-     * @param {string} selectedGoalId - ID of the currently selected goal for highlighting
-     * @param {string} hoveredGoalId - ID of the currently hovered goal
-     * @param {Object} scores - Map of goalId to score (0-100) for report mode
+     * Renders a list of competencies.
+     * @param {Array} competencies - List of competency objects
+     * @param {string} selectedCompetencyId - ID of the currently selected competency for highlighting
+     * @param {string} hoveredCompetencyId - ID of the currently hovered competency
+     * @param {Object} scores - Map of competencyId to score (0-100) for report mode
      */
-    render(goals, selectedGoalId = null, hoveredGoalId = null, scores = null) {
+    render(competencies, selectedCompetencyId = null, hoveredCompetencyId = null, scores = null) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        if (!goals || goals.length === 0) {
+        if (!competencies || competencies.length === 0) {
             this.ctx.fillStyle = '#64748b';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText('No goals to render', this.centerX, this.centerY);
+            this.ctx.fillText('No competencies to render', this.centerX, this.centerY);
             return;
         }
 
         // Calculate dynamic scale
         let maxRadius = 3;
-        goals.forEach(g => {
-            const r = parseFloat(g.endLevel) || 0;
+        competencies.forEach(c => {
+            const r = parseFloat(c.endLevel) || 0;
             if (r > maxRadius) maxRadius = r;
         });
         
@@ -46,41 +46,41 @@ class GoalRenderer {
         const margin = 0.9;
         this.scale = (Math.min(this.canvas.width, this.canvas.height) / 2 * margin) / maxRadius;
 
-        // Map goals by ID for parent lookup
-        const goalMap = new Map();
-        goals.forEach(g => goalMap.set(g.id.toString(), g));
+        // Map competencies by ID for parent lookup
+        const competencyMap = new Map();
+        competencies.forEach(c => competencyMap.set(c.id.toString(), c));
 
         // Calculate absolute positions and store them for hit testing
-        this.lastRenderedGoals = goals.map(g => {
-            const absTheta = this.calculateAbsoluteTheta(g, goalMap);
-            const score = scores ? scores[g.id.toString()] : null;
-            return { ...g, absTheta, score };
+        this.lastRenderedCompetencies = competencies.map(c => {
+            const absTheta = this.calculateAbsoluteTheta(c, competencyMap);
+            const score = scores ? scores[c.id.toString()] : null;
+            return { ...c, absTheta, score };
         });
 
-        // Filter goals if in report mode
-        const goalsToRender = scores 
-            ? this.lastRenderedGoals.filter(g => g.score !== undefined && g.score !== null)
-            : this.lastRenderedGoals;
+        // Filter competencies if in report mode
+        this.renderedCompetencies = scores 
+            ? this.lastRenderedCompetencies.filter(c => c.score !== undefined && c.score !== null)
+            : this.lastRenderedCompetencies;
 
         // Pass 1: Draw all slices
-        const anyHovered = hoveredGoalId !== null;
-        goalsToRender.forEach(g => {
-            this.drawSlice(g, selectedGoalId === g.id.toString(), hoveredGoalId === g.id.toString(), anyHovered);
+        const anyHovered = hoveredCompetencyId !== null;
+        this.renderedCompetencies.forEach(c => {
+            this.drawSlice(c, selectedCompetencyId === c.id.toString(), hoveredCompetencyId === c.id.toString(), anyHovered);
         });
 
         // Pass 2: Draw all labels (ensure they are on top of everything)
-        goalsToRender.forEach(g => {
-            this.drawLabel(g, hoveredGoalId === g.id.toString(), anyHovered);
+        this.renderedCompetencies.forEach(c => {
+            this.drawLabel(c, hoveredCompetencyId === c.id.toString(), anyHovered);
         });
     }
 
-    calculateAbsoluteTheta(goal, goalMap) {
-        let theta = parseFloat(goal.position) || 0;
-        let current = goal;
+    calculateAbsoluteTheta(competency, competencyMap) {
+        let theta = parseFloat(competency.position) || 0;
+        let current = competency;
         
         // Traverse up to find parent offsets
         while (current.parentId && current.parentId !== '-1') {
-            const parent = goalMap.get(current.parentId.toString());
+            const parent = competencyMap.get(current.parentId.toString());
             if (!parent) break;
             theta += parseFloat(parent.position) || 0;
             current = parent;
@@ -99,22 +99,22 @@ class GoalRenderer {
         return yiq >= 128 ? '#000000' : '#ffffff';
     }
 
-    getAdjustedOuterRadius(goal) {
-        const innerRadius = parseFloat(goal.startLevel) * this.scale;
-        const fullOuterRadius = parseFloat(goal.endLevel) * this.scale;
+    getAdjustedOuterRadius(competency) {
+        const innerRadius = parseFloat(competency.startLevel) * this.scale;
+        const fullOuterRadius = parseFloat(competency.endLevel) * this.scale;
         
-        if (goal.score !== undefined && goal.score !== null) {
-            const score = Math.max(5, goal.score); // Clamp min to 5%
+        if (competency.score !== undefined && competency.score !== null) {
+            const score = Math.max(5, competency.score); // Clamp min to 5%
             return innerRadius + (fullOuterRadius - innerRadius) * (score / 100);
         }
         return fullOuterRadius;
     }
 
-    drawSlice(goal, isSelected, isHovered, anyHovered) {
-        const innerRadius = parseFloat(goal.startLevel) * this.scale;
-        const outerRadius = this.getAdjustedOuterRadius(goal);
-        const startAngle = goal.absTheta;
-        const endAngle = goal.absTheta + (parseFloat(goal.width) || 0);
+    drawSlice(competency, isSelected, isHovered, anyHovered) {
+        const innerRadius = parseFloat(competency.startLevel) * this.scale;
+        const outerRadius = this.getAdjustedOuterRadius(competency);
+        const startAngle = competency.absTheta;
+        const endAngle = competency.absTheta + (parseFloat(competency.width) || 0);
 
         this.ctx.beginPath();
         this.ctx.arc(this.centerX, this.centerY, outerRadius, startAngle, endAngle);
@@ -122,7 +122,7 @@ class GoalRenderer {
         this.ctx.closePath();
 
         // Style
-        const baseColor = goal.color || '#94a3b8';
+        const baseColor = competency.color || '#94a3b8';
         this.ctx.fillStyle = baseColor;
         this.ctx.globalAlpha = !anyHovered || isSelected || isHovered ? 1.0 : 0.4;
         this.ctx.fill();
@@ -133,16 +133,16 @@ class GoalRenderer {
         this.ctx.stroke();
     }
 
-    drawLabel(goal, isHovered, anyHovered) {
+    drawLabel(competency, isHovered, anyHovered) {
         // Label handling
         if (anyHovered && !isHovered) return; // Hide other labels if something is hovered
 
-        const innerRadius = parseFloat(goal.startLevel) * this.scale;
-        const outerRadius = this.getAdjustedOuterRadius(goal);
-        const startAngle = goal.absTheta;
-        const endAngle = goal.absTheta + (parseFloat(goal.width) || 0);
+        const innerRadius = parseFloat(competency.startLevel) * this.scale;
+        const outerRadius = this.getAdjustedOuterRadius(competency);
+        const startAngle = competency.absTheta;
+        const endAngle = competency.absTheta + (parseFloat(competency.width) || 0);
 
-        const widthRad = parseFloat(goal.width) || 0;
+        const widthRad = parseFloat(competency.width) || 0;
         if (widthRad > 0.05 || isHovered) {
             const midAngle = (startAngle + endAngle) / 2;
             const midRadius = (innerRadius + outerRadius) / 2;
@@ -165,14 +165,14 @@ class GoalRenderer {
             
             this.ctx.rotate(rotation);
             
-            const baseColor = goal.color || '#94a3b8';
+            const baseColor = competency.color || '#94a3b8';
             const textColor = this.getContrastColor(baseColor);
             this.ctx.fillStyle = textColor;
             this.ctx.font = isHovered ? 'bold 12px sans-serif' : '10px sans-serif';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             
-            let name = goal.name;
+            let name = competency.name;
             if (!isHovered) {
                 // Measure and truncate if needed
                 const availableWidth = (outerRadius - innerRadius) * 0.8;
@@ -196,8 +196,19 @@ class GoalRenderer {
         }
     }
 
-    getGoalAt(x, y) {
-        if (!this.lastRenderedGoals) return null;
+    getAdjustedOuterLevel(competency) {
+        const startLevel = parseFloat(competency.startLevel);
+        const endLevel = parseFloat(competency.endLevel);
+        
+        if (competency.score !== undefined && competency.score !== null) {
+            const score = Math.max(5, competency.score); // Clamp min to 5%
+            return startLevel + (endLevel - startLevel) * (score / 100);
+        }
+        return endLevel;
+    }
+
+    getCompetencyAt(x, y) {
+        if (!this.renderedCompetencies) return null;
 
         const dx = x - this.centerX;
         const dy = y - this.centerY;
@@ -206,13 +217,13 @@ class GoalRenderer {
         
         let angle = Math.atan2(dy, dx);
         
-        for (const goal of this.lastRenderedGoals) {
-            const startLevel = parseFloat(goal.startLevel);
-            const endLevel = parseFloat(goal.endLevel);
+        for (const competency of this.renderedCompetencies) {
+            const startLevel = parseFloat(competency.startLevel);
+            const endLevel = this.getAdjustedOuterLevel(competency);
             
             if (level >= startLevel && level <= endLevel) {
-                let goalStart = goal.absTheta;
-                let goalEnd = goal.absTheta + parseFloat(goal.width);
+                let competencyStart = competency.absTheta;
+                let competencyEnd = competency.absTheta + parseFloat(competency.width);
                 
                 // Normalize both to [0, 2PI] for comparison
                 const normalize = (a) => {
@@ -222,17 +233,25 @@ class GoalRenderer {
                 };
 
                 const normAngle = normalize(angle);
-                const normStart = normalize(goalStart);
-                const normEnd = normalize(goalEnd);
+                const normStart = normalize(competencyStart);
+                const normEnd = normalize(competencyEnd);
 
                 if (normStart < normEnd) {
-                    if (normAngle >= normStart && normAngle <= normEnd) return goal.id.toString();
+                    if (normAngle >= normStart && normAngle <= normEnd) return competency.id.toString();
                 } else {
                     // Spans across the 0/2PI boundary
-                    if (normAngle >= normStart || normAngle <= normEnd) return goal.id.toString();
+                    if (normAngle >= normStart || normAngle <= normEnd) return competency.id.toString();
                 }
             }
         }
         return null;
     }
+
+    // Alias for backward compatibility
+    getGoalAt(x, y) {
+        return this.getCompetencyAt(x, y);
+    }
 }
+
+// Alias for backward compatibility
+const GoalRenderer = CompetencyRenderer;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open Proficiency Learning - Setup</title>
+    <title>Competency Learning Kit - Setup</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -300,7 +300,7 @@
 <body>
     <div class="container">
         <div class="card">
-            <h1>Open Proficiency Learning Setup</h1>
+            <h1>Competency Learning Kit Setup</h1>
             
             <div class="tabs">
                 <div class="tab active" data-tab="setup">Storage & Students</div>
@@ -309,7 +309,7 @@
             </div>
 
             <div id="setup-tab" class="tab-content active">
-                <p>Connect your Google Drive to manage the "Open Proficiency Learning Data" folder.</p>
+                <p>Connect your Google Drive to manage the "Competency Learning Kit Data" folder.</p>
 
                 <div class="info-box">
                     <span class="info-label">Local Folder ID</span>
@@ -356,9 +356,18 @@
                         <input type="text" id="student_name_input" placeholder="Student Name" style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 6px;">
                         <button id="add_student_button">Add Student</button>
                     </div>
-                    <ul id="student_list" style="list-style: none; padding: 0; margin: 0; font-size: 0.875rem;">
+                    <ul id="student_list" style="list-style: none; padding: 0; margin: 0; font-size: 0.875rem; margin-bottom: 24px;">
                         <li>No students loaded.</li>
                     </ul>
+
+                    <div class="log-title">Google Classroom Integration</div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <button id="fetch_classrooms_button">Fetch My Classrooms</button>
+                        <button id="import_students_button" class="secondary hidden">Import Students from Selected</button>
+                    </div>
+                    <div id="classroom_list_container" class="hidden" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: #fff;">
+                        <div id="classroom_list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -446,41 +455,91 @@
                     <p>Please authorize and select a project folder on the first tab.</p>
                 </div>
                 <div id="evidence_manager" class="hidden">
-                    <h2 style="font-size: 1.125rem; margin-bottom: 16px;">Add Evidence</h2>
+                    <h2 style="font-size: 1.125rem; margin-bottom: 16px;">Add Evidence (Batch)</h2>
+
+                    <div class="log-container" style="margin-top: 0; margin-bottom: 24px; border-top: none;">
+                        <div class="log-title">1. Evidence Name & Classroom Link</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="field-group">
+                                <label>Course</label>
+                                <select id="evidence_classroom_selector">
+                                    <option value="">-- No Classroom Sync --</option>
+                                </select>
+                            </div>
+                            <div class="field-group">
+                                <label>Assignment</label>
+                                <select id="evidence_assignment_selector" disabled>
+                                    <option value="">-- Select Course First --</option>
+                                    <option value="NEW">Create New Assignment...</option>
+                                </select>
+                            </div>
+                            <div class="field-group full-width" id="evidence_name_container">
+                                <label id="evidence_name_label">Evidence Name</label>
+                                <input type="text" id="evidence_name" placeholder="Evidence Name (e.g. Unit 1 assessment)">
+                            </div>
+                        </div>
+                    </div>
                     
-                    <div style="max-width: 800px;">
-                        <div class="field-group" style="margin-bottom: 16px;">
-                            <label>Select Student</label>
-                            <select id="evidence_student_selector">
-                                <option value="">-- Select a student --</option>
-                            </select>
+                    <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px;">
+                        <div>
+                            <div class="field-group" style="margin-bottom: 16px;">
+                                <label>2. Select Students</label>
+                                <div id="evidence_student_list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 8px;">
+                                    <!-- Student checkboxes will be here -->
+                                </div>
+                            </div>
                         </div>
 
                         <div id="evidence_form" class="hidden" style="display: flex; flex-direction: column; gap: 16px;">
                             <div class="field-group">
-                                <label>Evidence Name</label>
-                                <input type="text" id="evidence_name" placeholder="e.g. Reading Assessment Jan 2024">
-                            </div>
-                            
-                            <div class="field-group">
-                                <label>Goal Ratings</label>
-                                <div id="goal_ratings_container" style="display: flex; flex-direction: column; gap: 8px;">
-                                    <!-- Goal rating rows will be added here -->
+                                <label>3. Select Goals to Rate</label>
+                                <div id="evidence_assignment_goals_container" class="hidden" style="margin-bottom: 8px;">
+                                    <div style="font-size: 0.75rem; font-weight: 700; color: #007bff; margin-bottom: 4px; text-transform: uppercase;">Suggested for this Assignment</div>
+                                    <div id="evidence_assignment_goals_list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border: 1px solid #007bff; border-radius: 6px; padding: 12px; background: #f0f7ff; max-height: 150px; overflow-y: auto;">
+                                        <!-- Assignment goal checkboxes -->
+                                    </div>
                                 </div>
-                                <button id="add_goal_rating_button" class="secondary" style="margin-top: 8px; width: fit-content;">+ Add Goal Rating</button>
+                                <div id="evidence_recent_goals_container" class="hidden" style="margin-bottom: 8px;">
+                                    <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">Recent (Last Year)</div>
+                                    <div id="evidence_recent_goals_list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: #f0f7ff; max-height: 150px; overflow-y: auto;">
+                                        <!-- Recent goal checkboxes -->
+                                    </div>
+                                </div>
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">All Goals</div>
+                                <div id="evidence_goals_selector" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: #fff; max-height: 200px; overflow-y: auto;">
+                                    <!-- Goal checkboxes -->
+                                </div>
                             </div>
 
                             <div class="field-group">
-                                <label>Educator's Note / Narrative</label>
-                                <textarea id="evidence_note" rows="3"></textarea>
+                                <label>4. Individual Student Ratings</label>
+                                <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 6px;">
+                                    <table id="batch_rating_table" style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                                        <thead style="background: var(--bg);">
+                                            <tr>
+                                                <th style="padding: 8px; text-align: left; border-bottom: 1px solid var(--border);">Student</th>
+                                                <!-- Dynamic goal headers -->
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Dynamic student rows -->
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
 
                             <div class="field-group">
-                                <label>Artifact Drive IDs (semi-colon separated)</label>
-                                <input type="text" id="evidence_artifacts" placeholder="ID1; ID2">
+                                <label>5. Educator's Note / Narrative (Shared)</label>
+                                <textarea id="evidence_note" rows="3" placeholder="These notes will be applied to all selected students."></textarea>
                             </div>
 
-                            <button id="submit_evidence_button">Submit Evidence</button>
+                            <div class="field-group">
+                                <label>6. Upload Artifact (Optional)</label>
+                                <input type="file" id="evidence_file" multiple>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">Selected files will be uploaded and copied into each student's artifacts folder separately.</span>
+                            </div>
+
+                            <button id="submit_evidence_button" style="margin-top: 16px;">Submit Batch Evidence</button>
                         </div>
                     </div>
                 </div>
@@ -497,7 +556,7 @@
 
     <!-- Load Google Identity Services (GIS) -->
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    <script src="goal_renderer.js"></script>
+    <script src="competency_renderer.js"></script>
 
     <script>
         /**
@@ -506,13 +565,13 @@
         const CLIENT_ID = '767614918217-040505l01huso2e5f42bavj5magf27p8.apps.googleusercontent.com';
         
         // Permissions needed
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets';
-        const FOLDER_NAME = 'Open Proficiency Learning Data';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.rosters.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.coursework.me';
+        const FOLDER_NAME = 'Competency Learning Kit Data';
         const ROOT_DATA_NAME = 'Root Data';
         const LEARNERS_FOLDER_NAME = 'Learners';
-        const STORAGE_KEY = 'opl_folder_id';
-        const ROOT_DATA_KEY = 'opl_root_data_id';
-        const LEARNERS_KEY = 'opl_learners_folder_id';
+        const STORAGE_KEY = 'clk_folder_id';
+        const ROOT_DATA_KEY = 'clk_root_data_id';
+        const LEARNERS_KEY = 'clk_learners_folder_id';
 
         const authorizeButton = document.getElementById('authorize_button');
         const signoutButton = document.getElementById('signout_button');
@@ -522,7 +581,7 @@
         const storedIdEl = document.getElementById('stored-id');
         const statusEl = document.getElementById('status');
         const logEl = document.getElementById('log-output');
-        const TOKEN_STORAGE_KEY = 'opl_access_token';
+        const TOKEN_STORAGE_KEY = 'clk_access_token';
 
         let tokenClient;
         let accessToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
@@ -579,7 +638,7 @@
             document.getElementById('goals_editor').classList.remove('hidden');
 
             if (!goalRenderer) {
-                goalRenderer = new GoalRenderer(document.getElementById('goal_canvas'));
+                goalRenderer = new CompetencyRenderer(document.getElementById('goal_canvas'));
             }
 
             if (goals.length === 0) {
@@ -596,7 +655,7 @@
                 const rows = data.values || [];
                 
                 goals = rows
-                    .filter(row => row[0] === 'Goal')
+                    .filter(row => row[0] === 'Competency' || row[0] === 'Goal')
                     .map(row => ({
                         id: row[1],
                         name: row[2],
@@ -756,16 +815,16 @@
             setStatus('Saving...');
             
             try {
-                // 1. Fetch entire Root Data to preserve non-Goal rows
+                // 1. Fetch entire Root Data to preserve non-Goal/Competency rows
                 const data = await sheetsRequest(rootDataId, '/values/A:Z');
                 const existingRows = data.values || [];
                 
-                // 2. Filter out old Goal rows
-                const nonGoalRows = existingRows.filter(row => row[0] !== 'Goal');
+                // 2. Filter out old Goal / Competency rows
+                const nonGoalRows = existingRows.filter(row => row[0] !== 'Goal' && row[0] !== 'Competency');
                 
-                // 3. Prepare new Goal rows
+                // 3. Prepare new Competency rows
                 const goalRows = goals.map(g => [
-                    'Goal', g.id, g.name, g.parentId, g.startLevel, g.endLevel, g.position, g.width, g.description, g.rubric, g.color
+                    'Competency', g.id, g.name, g.parentId || '', '', 'ACTIVE', g.position || '0', g.description || '', g.rubric || '', g.color || '#94a3b8', g.startLevel || '0', g.endLevel || '3', g.width || '1'
                 ]);
                 
                 const newRows = [...nonGoalRows, ...goalRows];
@@ -917,6 +976,156 @@
             }
         };
 
+        document.getElementById('fetch_classrooms_button').onclick = () => fetchClassrooms();
+        document.getElementById('import_students_button').onclick = () => importStudentsFromClassrooms();
+
+        async function classroomRequest(path, options = {}) {
+            const url = `https://classroom.googleapis.com/v1${path}`;
+            const headers = {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+
+            const response = await fetch(url, { ...options, headers });
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.error?.message || 'Classroom API request failed');
+            }
+            
+            if (response.status === 204) return null;
+            return response.json();
+        }
+
+        let allClassrooms = [];
+        let linkedClassroomIds = new Set();
+
+        async function fetchClassrooms() {
+            log('Fetching Google Classrooms...');
+            setStatus('Fetching classrooms...');
+            try {
+                const data = await classroomRequest('/courses?courseStates=ACTIVE');
+                allClassrooms = data.courses || [];
+                log(`Found ${allClassrooms.length} active classrooms.`);
+                renderClassrooms();
+                document.getElementById('classroom_list_container').classList.remove('hidden');
+                document.getElementById('import_students_button').classList.remove('hidden');
+                setStatus('Classrooms fetched.');
+            } catch (err) {
+                log(`Fetch classrooms error: ${err.message}`);
+                setStatus(`Error fetching classrooms: ${err.message}`, 'error');
+            }
+        }
+
+        function renderClassrooms() {
+            const listEl = document.getElementById('classroom_list');
+            listEl.innerHTML = '';
+
+            if (allClassrooms.length === 0) {
+                listEl.innerHTML = '<div style="font-size: 0.875rem; color: var(--text-muted);">No active classrooms found.</div>';
+                return;
+            }
+
+            allClassrooms.forEach(course => {
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.gap = '8px';
+                div.style.padding = '4px 0';
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = `course_${course.id}`;
+                cb.checked = linkedClassroomIds.has(course.id);
+                cb.onchange = (e) => {
+                    if (e.target.checked) linkedClassroomIds.add(course.id);
+                    else linkedClassroomIds.delete(course.id);
+                    saveLinkedClassrooms();
+                };
+
+                const label = document.createElement('label');
+                label.htmlFor = `course_${course.id}`;
+                label.textContent = course.name;
+                label.style.cursor = 'pointer';
+                label.style.color = 'var(--text)';
+
+                div.appendChild(cb);
+                div.appendChild(label);
+                listEl.appendChild(div);
+            });
+        }
+
+        async function saveLinkedClassrooms() {
+            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            if (!rootDataId) return;
+
+            log('Updating linked classrooms in Root Data...');
+            try {
+                const data = await sheetsRequest(rootDataId, '/values/A:Z');
+                const rows = data.values || [];
+                
+                const otherRows = rows.filter(row => row[0] !== 'Classroom' && row[0] !== 'Google Classroom');
+                const classroomRows = Array.from(linkedClassroomIds).map(id => {
+                    const course = allClassrooms.find(c => c.id === id);
+                    return ['Google Classroom', id, course ? course.name : 'Unknown'];
+                });
+
+                const newRows = [...otherRows, ...classroomRows];
+
+                await sheetsRequest(rootDataId, '/values/A:Z:clear', { method: 'POST' });
+                await sheetsRequest(rootDataId, '/values/A1?valueInputOption=USER_ENTERED', {
+                    method: 'PUT',
+                    body: JSON.stringify({ values: newRows })
+                });
+                log('Linked classrooms updated.');
+            } catch (err) {
+                log(`Save linked classrooms error: ${err.message}`);
+            }
+        }
+
+        async function importStudentsFromClassrooms() {
+            const selectedIds = Array.from(linkedClassroomIds);
+            if (selectedIds.length === 0) {
+                alert('Please select at least one classroom to import from.');
+                return;
+            }
+
+            log(`Importing students from ${selectedIds.length} classrooms...`);
+            setStatus('Importing students...');
+            
+            let totalImported = 0;
+            let totalSkipped = 0;
+
+            try {
+                for (const courseId of selectedIds) {
+                    const course = allClassrooms.find(c => c.id === courseId);
+                    log(`Fetching students for: ${course ? course.name : courseId}`);
+                    const data = await classroomRequest(`/courses/${courseId}/students`);
+                    const classroomStudents = data.students || [];
+                    
+                    for (const cs of classroomStudents) {
+                        const name = cs.profile.name.fullName;
+                        // Check if student already exists
+                        if (students.some(s => s.name === name)) {
+                            log(`Skipping existing student: ${name}`);
+                            totalSkipped++;
+                            continue;
+                        }
+                        
+                        await addStudent(name, true, cs.userId);
+                        totalImported++;
+                    }
+                }
+                
+                await loadStudents();
+                log(`Import complete. ${totalImported} students added, ${totalSkipped} skipped.`);
+                setStatus(`Import complete! ${totalImported} added, ${totalSkipped} skipped.`);
+            } catch (err) {
+                log(`Import error: ${err.message}`);
+                setStatus(`Error during import: ${err.message}`, 'error');
+            }
+        }
+
         async function initEvidenceTab() {
             const folderId = localStorage.getItem(STORAGE_KEY);
             const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
@@ -933,120 +1142,717 @@
             if (goals.length === 0) {
                 await loadGoals();
             }
-            updateEvidenceStudentSelector();
+            if (students.length === 0) {
+                await loadStudents();
+            }
+            await renderEvidenceStudentList();
+            renderEvidenceGoalSelector();
+            renderEvidenceClassroomSelector();
         }
 
-        function updateEvidenceStudentSelector() {
-            const selector = document.getElementById('evidence_student_selector');
-            const currentVal = selector.value;
-            selector.innerHTML = '<option value="">-- Select a student --</option>';
+        let studentEvidenceCache = {}; // { learnerDataId: [rows] }
+
+        async function ensureStudentEvidenceLoaded(studentIds) {
+            const missingIds = studentIds.filter(id => !studentEvidenceCache[id]);
+            if (missingIds.length === 0) return;
+
+            log(`Fetching evidence for ${missingIds.length} students...`);
+
+            // Fetch in parallel with a bit of throttling if needed, but for now just parallel
+            await Promise.all(missingIds.map(async (id) => {
+                try {
+                    const data = await sheetsRequest(id, '/values/A:K');
+                    studentEvidenceCache[id] = data.values || [];
+                } catch (err) {
+                    log(`Error fetching evidence for ${id}: ${err.message}`);
+                    studentEvidenceCache[id] = []; // Mark as loaded to avoid retries
+                }
+            }));
+        }
+
+        async function renderEvidenceStudentList() {
+            const listEl = document.getElementById('evidence_student_list');
+            
+            // Capture currently selected IDs
+            const selectedIds = new Set(getSelectedStudentIds());
+            
+            listEl.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-muted); padding: 8px;">Loading status...</div>';
+
+            const evidenceName = document.getElementById('evidence_name').value.trim();
+            const courseId = document.getElementById('evidence_classroom_selector').value;
+
+            // To group correctly, we need evidence status for all students
+            if (evidenceName) {
+                await ensureStudentEvidenceLoaded(students.map(s => s.learnerDataId));
+            }
+
+            listEl.innerHTML = '';
+
+            const assessed = [];
+            const readyToAssess = [];
+            const lessRelevant = [];
+
+            const recentStudentIds = getRecentStudentIds();
+
             students.forEach(s => {
-                const opt = new Option(s.name, s.learnerDataId);
+                const hasEvidence = evidenceName && (studentEvidenceCache[s.learnerDataId] || [])
+                    .some(row => row[0] === 'Evidence' && row[2] === evidenceName);
+
+                if (hasEvidence) {
+                    assessed.push(s);
+                } else {
+                    const isRecent = recentStudentIds.has(s.learnerDataId);
+                    const isInRoster = courseId && s.classroomId && currentCourseRoster.has(s.classroomId);
+                    
+                    if (isRecent || isInRoster) {
+                        readyToAssess.push(s);
+                    } else {
+                        lessRelevant.push(s);
+                    }
+                }
+            });
+
+            const renderGroup = (title, groupStudents, type) => {
+                if (groupStudents.length === 0) return;
+
+                const groupHeader = document.createElement('div');
+                groupHeader.style.fontSize = '0.7rem';
+                groupHeader.style.fontWeight = '700';
+                
+                if (type === 'assessed') groupHeader.style.color = '#28a745';
+                else if (type === 'less') groupHeader.style.color = '#ccc';
+                else groupHeader.style.color = 'var(--text-muted)';
+                
+                groupHeader.style.textTransform = 'uppercase';
+                groupHeader.style.marginTop = '8px';
+                groupHeader.style.marginBottom = '4px';
+                groupHeader.textContent = title;
+                listEl.appendChild(groupHeader);
+
+                groupStudents.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => {
+                    const div = document.createElement('div');
+                    div.style.display = 'flex';
+                    div.style.alignItems = 'center';
+                    div.style.gap = '8px';
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = s.learnerDataId;
+                    cb.id = `ev_student_${s.learnerDataId}`;
+                    cb.checked = selectedIds.has(s.learnerDataId); // Restore selection
+                    
+                    cb.onchange = async () => {
+                        if (cb.checked) {
+                            await ensureStudentEvidenceLoaded([s.learnerDataId]);
+                        }
+                        updateBatchRatingTable();
+                        document.getElementById('evidence_form').classList.toggle('hidden', getSelectedStudentIds().length === 0);
+                    };
+
+                    const label = document.createElement('label');
+                    label.htmlFor = `ev_student_${s.learnerDataId}`;
+                    label.textContent = s.name;
+                    label.style.fontSize = '0.875rem';
+                    
+                    if (type === 'assessed') label.style.color = '#28a745';
+                    if (type === 'less') label.style.color = '#999';
+
+                    div.appendChild(cb);
+                    div.appendChild(label);
+                    listEl.appendChild(div);
+                });
+            };
+
+            renderGroup('Ready to Assess', readyToAssess, 'ready');
+            renderGroup('Already Assessed', assessed, 'assessed');
+            renderGroup('Less Relevant (Not in Classroom / Inactive)', lessRelevant, 'less');
+            
+            // Ensure the form visibility is correct after restoration
+            document.getElementById('evidence_form').classList.toggle('hidden', getSelectedStudentIds().length === 0);
+            updateBatchRatingTable();
+        }
+        const GOAL_USAGE_KEY = 'clk_goal_usage';
+        const ASSIGNMENT_GOALS_KEY = 'clk_assignment_goals';
+        const STUDENT_USAGE_KEY = 'clk_student_usage';
+
+        function recordGoalUsage(goalIds, evidenceName) {
+            let usage = JSON.parse(localStorage.getItem(GOAL_USAGE_KEY) || '{}');
+            const now = Date.now();
+            goalIds.forEach(id => {
+                usage[id] = now;
+            });
+            localStorage.setItem(GOAL_USAGE_KEY, JSON.stringify(usage));
+
+            if (evidenceName) {
+                let assignmentGoals = JSON.parse(localStorage.getItem(ASSIGNMENT_GOALS_KEY) || '{}');
+                assignmentGoals[evidenceName.toLowerCase()] = {
+                    goalIds: goalIds,
+                    timestamp: now
+                };
+                localStorage.setItem(ASSIGNMENT_GOALS_KEY, JSON.stringify(assignmentGoals));
+            }
+        }
+
+        function recordStudentUsage(studentIds) {
+            let usage = JSON.parse(localStorage.getItem(STUDENT_USAGE_KEY) || '{}');
+            const now = Date.now();
+            studentIds.forEach(id => {
+                usage[id] = now;
+            });
+            localStorage.setItem(STUDENT_USAGE_KEY, JSON.stringify(usage));
+        }
+
+        function getRecentStudentIds() {
+            const usage = JSON.parse(localStorage.getItem(STUDENT_USAGE_KEY) || '{}');
+            const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
+            return new Set(Object.keys(usage).filter(id => usage[id] > oneYearAgo));
+        }
+
+        function getRecentGoalIds() {
+            const usage = JSON.parse(localStorage.getItem(GOAL_USAGE_KEY) || '{}');
+            const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
+            return Object.keys(usage).filter(id => usage[id] > oneYearAgo);
+        }
+
+        function getGoalsForAssignment(evidenceName) {
+            if (!evidenceName) return [];
+            const assignmentGoals = JSON.parse(localStorage.getItem(ASSIGNMENT_GOALS_KEY) || '{}');
+            const data = assignmentGoals[evidenceName.toLowerCase()];
+            if (!data) return [];
+            const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
+            if (data.timestamp < oneYearAgo) return [];
+            return data.goalIds;
+        }
+
+        function renderEvidenceGoalSelector() {
+            const container = document.getElementById('evidence_goals_selector');
+            const recentContainer = document.getElementById('evidence_recent_goals_list');
+            const recentWrapper = document.getElementById('evidence_recent_goals_container');
+            const assignmentContainer = document.getElementById('evidence_assignment_goals_list');
+            const assignmentWrapper = document.getElementById('evidence_assignment_goals_container');
+            
+            container.innerHTML = '';
+            recentContainer.innerHTML = '';
+            assignmentContainer.innerHTML = '';
+            
+            const evidenceName = document.getElementById('evidence_name').value.trim();
+            const assignmentGoalIds = new Set(getGoalsForAssignment(evidenceName));
+            const recentIds = new Set(getRecentGoalIds());
+            const sortedGoals = [...goals].sort((a,b) => a.name.localeCompare(b.name));
+
+            function createGoalCheckbox(g, type) {
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.gap = '6px';
+                
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = g.id;
+                
+                let baseId = 'ev_goal_';
+                if (type === 'recent') baseId = 'ev_goal_recent_';
+                if (type === 'assignment') baseId = 'ev_goal_assign_';
+                
+                cb.id = `${baseId}${g.id}`;
+                cb.onchange = (e) => {
+                    // Sync checkboxes between all sections
+                    ['ev_goal_', 'ev_goal_recent_', 'ev_goal_assign_'].forEach(prefix => {
+                        const otherCb = document.getElementById(`${prefix}${g.id}`);
+                        if (otherCb) otherCb.checked = e.target.checked;
+                    });
+                    
+                    updateBatchRatingTable();
+                };
+                
+                const label = document.createElement('label');
+                label.htmlFor = cb.id;
+                label.textContent = g.name;
+                label.style.fontSize = '0.75rem';
+                
+                div.appendChild(cb);
+                div.appendChild(label);
+                return div;
+            }
+
+            sortedGoals.forEach(g => {
+                // Add to "All Goals"
+                container.appendChild(createGoalCheckbox(g, 'all'));
+                
+                // Add to "Recent" if applicable
+                if (recentIds.has(g.id.toString())) {
+                    recentContainer.appendChild(createGoalCheckbox(g, 'recent'));
+                }
+
+                // Add to "Assignment Suggestions" if applicable
+                if (assignmentGoalIds.has(g.id.toString())) {
+                    assignmentContainer.appendChild(createGoalCheckbox(g, 'assignment'));
+                }
+            });
+
+            // Auto-check assignment goals
+            if (assignmentGoalIds.size > 0) {
+                assignmentGoalIds.forEach(gid => {
+                    ['ev_goal_', 'ev_goal_recent_', 'ev_goal_assign_'].forEach(prefix => {
+                        const cb = document.getElementById(`${prefix}${gid}`);
+                        if (cb) cb.checked = true;
+                    });
+                });
+            }
+
+            recentWrapper.classList.toggle('hidden', recentContainer.children.length === 0);
+            assignmentWrapper.classList.toggle('hidden', !evidenceName || assignmentContainer.children.length === 0);
+            updateBatchRatingTable();
+        }
+
+        function getSelectedStudentIds() {
+            return Array.from(document.querySelectorAll('#evidence_student_list input:checked')).map(cb => cb.value);
+        }
+
+        function getSelectedGoalIds() {
+            return Array.from(document.querySelectorAll('#evidence_goals_selector input:checked')).map(cb => cb.value);
+        }
+
+        function updateBatchRatingTable() {
+            const studentIds = getSelectedStudentIds();
+            const goalIds = getSelectedGoalIds();
+            const assignmentId = document.getElementById('evidence_assignment_selector').value;
+            const evidenceName = document.getElementById('evidence_name').value.trim();
+            const table = document.getElementById('batch_rating_table');
+            const thead = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
+
+            // Save current values to preserve user input during re-renders
+            const currentValues = {};
+            tbody.querySelectorAll('input').forEach(input => {
+                currentValues[input.dataset.key] = input.value;
+            });
+
+            // Update Headers
+            thead.innerHTML = '<th style="padding: 8px; text-align: left; border-bottom: 1px solid var(--border);">Student</th>';
+            goalIds.forEach(gid => {
+                const goal = goals.find(g => g.id.toString() === gid.toString());
+                const th = document.createElement('th');
+                th.style.padding = '8px';
+                th.style.textAlign = 'center';
+                th.style.borderBottom = '1px solid var(--border)';
+                th.textContent = goal ? goal.name : gid;
+                th.style.fontSize = '0.75rem';
+                thead.appendChild(th);
+            });
+
+            if (assignmentId) {
+                const th = document.createElement('th');
+                th.style.padding = '8px';
+                th.style.textAlign = 'center';
+                th.style.borderBottom = '1px solid var(--border)';
+                th.textContent = 'Classroom Grade';
+                th.style.fontSize = '0.75rem';
+                th.style.color = 'var(--primary)';
+                thead.appendChild(th);
+            }
+
+            // Update Body
+            tbody.innerHTML = '';
+            studentIds.forEach(sid => {
+                const student = students.find(s => s.learnerDataId === sid);
+                const tr = document.createElement('tr');
+                
+                const nameTd = document.createElement('td');
+                nameTd.style.padding = '8px';
+                nameTd.style.borderBottom = '1px solid var(--border)';
+                nameTd.textContent = student ? student.name : sid;
+                tr.appendChild(nameTd);
+
+                // Look for existing evidence for this student/assignment
+                let existingEvidence = null;
+                if (evidenceName && studentEvidenceCache[sid]) {
+                    existingEvidence = studentEvidenceCache[sid].find(row => row[0] === 'Evidence' && row[2] === evidenceName);
+                }
+
+                const existingRatings = {};
+                if (existingEvidence && existingEvidence[3]) {
+                    existingEvidence[3].split(';').forEach(pair => {
+                        const [gid, val] = pair.split(',');
+                        existingRatings[gid] = val;
+                    });
+                }
+
+                goalIds.forEach(gid => {
+                    const td = document.createElement('td');
+                    td.style.padding = '4px';
+                    td.style.borderBottom = '1px solid var(--border)';
+                    td.style.textAlign = 'center';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.style.width = '60px';
+                    input.style.textAlign = 'center';
+                    input.placeholder = '0-100';
+                    input.dataset.key = `${sid}_${gid}`;
+                    
+                    // Priority: Current UI value > Existing Evidence Cache > Empty
+                    input.value = currentValues[input.dataset.key] || existingRatings[gid] || '';
+                    
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                });
+
+                if (assignmentId) {
+                    const td = document.createElement('td');
+                    td.style.padding = '4px';
+                    td.style.borderBottom = '1px solid var(--border)';
+                    td.style.textAlign = 'center';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.style.width = '60px';
+                    input.style.textAlign = 'center';
+                    input.placeholder = 'Grade';
+                    input.dataset.key = `${sid}_classroom`;
+                    input.value = currentValues[input.dataset.key] || '';
+                    
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                }
+
+                tbody.appendChild(tr);
+            });
+
+            // If we have selected students and found existing evidence, maybe pre-fill the shared note
+            if (studentIds.length > 0 && evidenceName) {
+                const firstStudentEvidence = studentEvidenceCache[studentIds[0]]?.find(row => row[0] === 'Evidence' && row[2] === evidenceName);
+                if (firstStudentEvidence && firstStudentEvidence[5]) {
+                    const noteEl = document.getElementById('evidence_note');
+                    if (!noteEl.value) { // Only fill if currently empty
+                        noteEl.value = firstStudentEvidence[5];
+                    }
+                }
+            }
+        }
+
+        async function renderEvidenceClassroomSelector() {
+            const selector = document.getElementById('evidence_classroom_selector');
+            selector.innerHTML = '<option value="">-- No Classroom Sync --</option>';
+            
+            // If we have linked IDs but haven't fetched metadata yet
+            if (allClassrooms.length === 0 && linkedClassroomIds.size > 0) {
+                log("Refreshing classroom metadata for evidence tab...");
+                await fetchClassrooms(); 
+            }
+            
+            // Only show linked classrooms
+            const linkedClassrooms = allClassrooms.filter(c => linkedClassroomIds.has(c.id));
+            linkedClassrooms.forEach(c => {
+                const opt = new Option(c.name, c.id);
                 selector.add(opt);
             });
-            selector.value = currentVal;
+
+            // Restore last selected course
+            const lastCourseId = localStorage.getItem('opl_last_evidence_course');
+            if (lastCourseId && linkedClassroomIds.has(lastCourseId)) {
+                selector.value = lastCourseId;
+                selector.dispatchEvent(new Event('change'));
+            }
         }
 
-        document.getElementById('evidence_student_selector').onchange = (e) => {
-            const learnerDataId = e.target.value;
-            if (learnerDataId) {
-                document.getElementById('evidence_form').classList.remove('hidden');
-            } else {
-                document.getElementById('evidence_form').classList.add('hidden');
+        async function loadEvidenceAssignments(courseId, selectedId = null) {
+            const assignmentSelector = document.getElementById('evidence_assignment_selector');
+            assignmentSelector.disabled = false;
+            assignmentSelector.innerHTML = '<option value="">Loading...</option>';
+
+            try {
+                const data = await classroomRequest(`/courses/${courseId}/courseWork`);
+                const assignments = data.courseWork || [];
+                
+                assignmentSelector.innerHTML = '<option value="">-- Select Assignment --</option>';
+                const newOpt = new Option('Create New Assignment...', 'NEW');
+                assignmentSelector.add(newOpt);
+
+                assignments.forEach(aw => {
+                    const opt = new Option(aw.title, aw.id);
+                    assignmentSelector.add(opt);
+                });
+
+                if (selectedId) {
+                    assignmentSelector.value = selectedId;
+                    // Trigger change to update Evidence Name and visibility
+                    assignmentSelector.dispatchEvent(new Event('change'));
+                }
+            } catch (err) {
+                log(`Fetch assignments error: ${err.message}`);
+                assignmentSelector.innerHTML = '<option value="">Error loading assignments</option>';
+            }
+        }
+
+        let currentCourseRoster = new Set(); // Set of classroom userIds
+
+        document.getElementById('evidence_classroom_selector').onchange = async (e) => {
+            const courseId = e.target.value;
+            const assignmentSelector = document.getElementById('evidence_assignment_selector');
+            
+            if (courseId) {
+                localStorage.setItem('opl_last_evidence_course', courseId);
+            }
+
+            if (!courseId) {
+                currentCourseRoster = new Set();
+                assignmentSelector.disabled = true;
+                assignmentSelector.innerHTML = '<option value="">-- Select Course First --</option>';
+                document.getElementById('evidence_name_container').classList.remove('hidden');
+                document.getElementById('evidence_name_label').textContent = 'Evidence Name';
+                updateBatchRatingTable();
+                renderEvidenceStudentList();
+                return;
+            }
+
+            // Fetch assignments
+            loadEvidenceAssignments(courseId);
+
+            try {
+                // Fetch roster for relevance grouping
+                log('Fetching course roster for relevance grouping...');
+                const rosterData = await classroomRequest(`/courses/${courseId}/students`);
+                currentCourseRoster = new Set((rosterData.students || []).map(s => s.userId));
+                renderEvidenceStudentList();
+            } catch (err) {
+                log(`Fetch roster error: ${err.message}`);
             }
         };
 
-        document.getElementById('add_goal_rating_button').onclick = () => {
-            addGoalRatingRow();
+        document.getElementById('evidence_assignment_selector').onchange = (e) => {
+            const val = e.target.value;
+            const nameContainer = document.getElementById('evidence_name_container');
+            const nameLabel = document.getElementById('evidence_name_label');
+            const nameInput = document.getElementById('evidence_name');
+
+            if (val === 'NEW') {
+                nameContainer.classList.remove('hidden');
+                nameLabel.textContent = 'New Assignment Name';
+                nameInput.value = '';
+                nameInput.focus();
+            } else if (val) {
+                // Existing assignment
+                nameContainer.classList.add('hidden');
+                const opt = e.target.options[e.target.selectedIndex];
+                nameInput.value = opt.text;
+            } else {
+                // "-- Select Assignment --"
+                nameContainer.classList.remove('hidden');
+                nameLabel.textContent = 'Evidence Name';
+            }
+            renderEvidenceGoalSelector();
+            renderEvidenceStudentList();
         };
 
-        function addGoalRatingRow() {
-            const container = document.getElementById('goal_ratings_container');
-            const row = document.createElement('div');
-            row.style.display = 'flex';
-            row.style.gap = '8px';
-            row.className = 'goal-rating-row';
-
-            const goalSelect = document.createElement('select');
-            goalSelect.style.flex = '2';
-            goalSelect.innerHTML = '<option value="">-- Select Goal --</option>';
-            goals.sort((a,b) => a.name.localeCompare(b.name)).forEach(g => {
-                const opt = new Option(g.name, g.id);
-                goalSelect.add(opt);
-            });
-
-            const ratingInput = document.createElement('input');
-            ratingInput.type = 'number';
-            ratingInput.placeholder = 'Rating (0-100)';
-            ratingInput.style.flex = '1';
-            ratingInput.min = '0';
-            ratingInput.max = '100';
-
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'secondary';
-            removeBtn.textContent = '✕';
-            removeBtn.onclick = () => row.remove();
-
-            row.appendChild(goalSelect);
-            row.appendChild(ratingInput);
-            row.appendChild(removeBtn);
-            container.appendChild(row);
-        }
+        let evidenceNameTimeout;
+        document.getElementById('evidence_name').oninput = () => {
+            clearTimeout(evidenceNameTimeout);
+            evidenceNameTimeout = setTimeout(() => {
+                renderEvidenceGoalSelector();
+                renderEvidenceStudentList();
+            }, 500); // Debounce name input to avoid excessive API calls for grouping
+        };
 
         document.getElementById('submit_evidence_button').onclick = async () => {
-            const learnerDataId = document.getElementById('evidence_student_selector').value;
-            const name = document.getElementById('evidence_name').value.trim();
+            const studentIds = getSelectedStudentIds();
+            const goalIds = getSelectedGoalIds();
+            const evidenceName = document.getElementById('evidence_name').value.trim();
             const note = document.getElementById('evidence_note').value.trim();
-            const artifacts = document.getElementById('evidence_artifacts').value.trim();
+            const fileInput = document.getElementById('evidence_file');
+            const files = fileInput.files;
             
-            if (!learnerDataId || !name) {
-                alert('Please select a student and provide an evidence name.');
+            if (studentIds.length === 0 || !evidenceName) {
+                alert('Please select students and provide an evidence name.');
                 return;
             }
 
-            const ratings = Array.from(document.querySelectorAll('.goal-rating-row')).map(row => {
-                const goalId = row.querySelector('select').value;
-                const rating = row.querySelector('input').value;
-                if (goalId && rating) return `${goalId},${rating}`;
-                return null;
-            }).filter(r => r !== null).join(';');
-
-            if (!ratings) {
-                alert('Please add at least one goal rating.');
+            if (goalIds.length === 0) {
+                alert('Please select at least one goal to rate.');
                 return;
             }
 
-            const evidenceId = Date.now().toString();
             const timestamp = new Date().toISOString();
-            const userEmail = 'authenticated-user';
+            const userEmail = 'authenticated-user'; // Placeholder
+            const evidenceId = Date.now().toString();
 
-            // Evidence row: 'Evidence', ID, Name, GoalRatings, Artifacts, Note, Timestamp, Replaces, EntryAccount, ArchivedTS, ArchivedAccount
-            const newRow = ['Evidence', evidenceId, name, ratings, artifacts, note, timestamp, '', userEmail, '', ''];
+            setStatus(`Processing batch evidence for ${studentIds.length} students...`);
+            log(`Starting batch submission: ${evidenceName}`);
 
-            log(`Submitting evidence for student...`);
-            setStatus('Submitting evidence...');
-            
+            const courseId = document.getElementById('evidence_classroom_selector').value;
+            const assignmentIdInput = document.getElementById('evidence_assignment_selector').value;
+
+            let finalAssignmentId = assignmentIdInput;
+
             try {
-                await sheetsRequest(learnerDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        values: [newRow]
-                    })
-                });
+                // 0. Handle Artifact Upload
+                const sourceFileIds = [];
+                if (files.length > 0) {
+                    const projectFolderId = localStorage.getItem(STORAGE_KEY);
+                    for (const file of files) {
+                        log(`Uploading artifact: ${file.name}`);
+                        const uploadResult = await uploadFileToDrive(file, projectFolderId ? [projectFolderId] : []);
+                        sourceFileIds.push({ id: uploadResult.id, name: file.name });
+                    }
+                }
+
+                // 1. Handle New Assignment Creation if needed
+                if (courseId && assignmentIdInput === 'NEW') {
+                    const newTitle = evidenceName;
+                    log(`Creating new assignment: ${newTitle}`);
+                    const newAW = await classroomRequest(`/courses/${courseId}/courseWork`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            title: newTitle,
+                            workType: 'ASSIGNMENT',
+                            state: 'PUBLISHED'
+                        })
+                    });
+                    finalAssignmentId = newAW.id;
+                    log(`Created assignment ID: ${finalAssignmentId}`);
+                }
+
+                for (const sid of studentIds) {
+                    const student = students.find(s => s.learnerDataId === sid);
+                    log(`Processing student: ${student.name}`);
+
+                    // 2. Copy Artifacts to student's folder
+                    const studentArtifactIds = [];
+                    for (const source of sourceFileIds) {
+                        log(`Copying artifact ${source.name} for ${student.name}...`);
+                        const copy = await driveRequest(`/files/${source.id}/copy`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                parents: [student.artifactsId],
+                                name: `${evidenceName} - ${student.name} - ${source.name}`
+                            })
+                        });
+                        studentArtifactIds.push(copy.id);
+                    }
+
+                    // 3. Prepare Ratings for this student
+                    const studentRatings = goalIds.map(gid => {
+                        const val = document.querySelector(`input[data-key="${sid}_${gid}"]`).value;
+                        return `${gid},${val || 0}`;
+                    }).join(';');
+
+                    // 4. Update Learner Data Spreadsheet (8 columns matching README Evidence schema)
+                    const newRow = ['Evidence', evidenceId, evidenceName, studentRatings, studentArtifactIds.join(';'), note, timestamp, userEmail];
+                    await sheetsRequest(sid, '/values/A1:append?valueInputOption=USER_ENTERED', {
+                        method: 'POST',
+                        body: JSON.stringify({ values: [newRow] })
+                    });
+
+                    // Update Cache
+                    if (studentEvidenceCache[sid]) {
+                        studentEvidenceCache[sid].push(newRow);
+                    }
+
+                    // 5. Classroom Sync
+                    if (courseId && finalAssignmentId) {
+                        try {
+                            const finalGrade = document.querySelector(`input[data-key="${sid}_classroom"]`).value;
+                            if (finalGrade !== '') {
+                                log(`Syncing to Classroom for ${student.name}...`);
+                                // Find student's submission
+                                const lookupId = student.classroomId || student.name;
+                                const subData = await classroomRequest(`/courses/${courseId}/courseWork/${finalAssignmentId}/studentSubmissions?userId=${lookupId}`);
+                                
+                                if (subData.studentSubmissions && subData.studentSubmissions.length > 0) {
+                                    const submission = subData.studentSubmissions[0];
+                                    
+                                    log(`Updating classroom grade to ${finalGrade}`);
+                                    await classroomRequest(`/courses/${courseId}/courseWork/${finalAssignmentId}/studentSubmissions/${submission.id}?updateMask=assignedGrade,draftGrade`, {
+                                        method: 'PATCH',
+                                        body: JSON.stringify({
+                                            assignedGrade: parseFloat(finalGrade),
+                                            draftGrade: parseFloat(finalGrade)
+                                        })
+                                    });
+                                } else {
+                                    log(`Could not find Classroom submission for ${student.name}. Skipping sync.`);
+                                }
+                            }
+                        } catch (clErr) {
+                            log(`Classroom sync error for ${student.name}: ${clErr.message}`);
+                        }
+                    }
+                }
+
+                recordGoalUsage(goalIds, evidenceName);
+                recordStudentUsage(studentIds);
+                renderEvidenceGoalSelector();
+
+                log('Batch submission complete.');
+                setStatus(`Successfully added evidence for ${studentIds.length} students.`);
                 
-                log('Evidence submitted successfully.');
-                setStatus(`Evidence "${name}" added!`);
-                
-                // Reset form
-                document.getElementById('evidence_name').value = '';
+                // If a new assignment was created, refresh the list and select it
+                if (courseId && assignmentIdInput === 'NEW' && finalAssignmentId) {
+                    await loadEvidenceAssignments(courseId, finalAssignmentId);
+                }
+
+                // Reset form (Keep evidence name so the student list can correctly show "Already Assessed")
                 document.getElementById('evidence_note').value = '';
-                document.getElementById('evidence_artifacts').value = '';
-                document.getElementById('goal_ratings_container').innerHTML = '';
+                document.getElementById('evidence_file').value = '';
+                // Clear checkboxes
+                document.querySelectorAll('#evidence_student_list input:checked').forEach(cb => cb.checked = false);
+                document.getElementById('evidence_form').classList.add('hidden');
+                
+                await renderEvidenceStudentList();
+
             } catch (err) {
-                log(`Submit evidence error: ${err.message}`);
-                setStatus(`Error submitting evidence: ${err.message}`, 'error');
+                log(`Batch submission error: ${err.message}`);
+                setStatus(`Error during batch submission: ${err.message}`, 'error');
             }
         };
+
+        function updateEvidenceStudentSelector() {
+            // Deprecated - replaced by batch list
+        }
+
+        async function uploadFileToDrive(file, parents = []) {
+            const metadata = {
+                name: file.name,
+                parents: parents
+            };
+
+            const boundary = '-------314159265358979323846';
+            const delimiter = "\r\n--" + boundary + "\r\n";
+            const close_delim = "\r\n--" + boundary + "--";
+
+            const contentType = file.type || 'application/octet-stream';
+            
+            const metadataPart = 
+                'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+                JSON.stringify(metadata);
+                
+            const mediaPartHeader = 
+                '\r\nContent-Type: ' + contentType + '\r\n\r\n';
+
+            const blob = new Blob([
+                delimiter,
+                metadataPart,
+                delimiter,
+                mediaPartHeader,
+                file,
+                close_delim
+            ], { type: 'multipart/related; boundary=' + boundary });
+
+            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: blob
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error?.message || 'File upload failed');
+            }
+
+            return await response.json();
+        }
 
         async function driveRequest(path, options = {}) {
             const url = `https://www.googleapis.com/drive/v3${path}`;
@@ -1204,7 +2010,7 @@
                     await sheetsRequest(rootDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
                         method: 'POST',
                         body: JSON.stringify({
-                            values: [['Comment', "This file is used by the Open Proficiency Learning system. Please don't manually make any changes."]]
+                            values: [['Comment', "This file is used by the Competency Learning Kit system. Please don't manually make any changes."]]
                         })
                     });
                 }
@@ -1236,19 +2042,28 @@
             const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
             if (!rootDataId) return;
 
-            log('Loading students...');
+            log('Loading students & project data...');
             const listEl = document.getElementById('student_list');
             listEl.innerHTML = '<li>Loading...</li>';
 
             try {
                 const data = await sheetsRequest(rootDataId, '/values/A:Z');
                 const rows = data.values || [];
+                
+                // Load Students
                 students = rows.filter(row => row[0] === 'Student').map(row => ({
                     name: row[1],
                     folderId: row[2],
                     learnerDataId: row[3],
-                    artifactsId: row[4]
+                    artifactsId: row[4],
+                    nickname: row[5] || row[1],
+                    classroomId: row[6] || ''
                 }));
+
+                // Load Linked Classrooms
+                linkedClassroomIds = new Set(
+                    rows.filter(row => row[0] === 'Classroom').map(row => row[1])
+                );
 
                 listEl.innerHTML = '';
                 if (students.length === 0) {
@@ -1262,15 +2077,16 @@
                     });
                 }
             } catch (err) {
-                log(`Load students error: ${err.message}`);
+                log(`Load data error: ${err.message}`);
                 listEl.innerHTML = '<li>Error loading students.</li>';
             }
         }
 
-        async function addStudent(name) {
+        async function addStudent(name, skipLoad = false, classroomId = '', nickname = '') {
             log(`Adding student: ${name}...`);
             const learnersId = localStorage.getItem(LEARNERS_KEY);
             const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            const finalNickname = nickname || name;
             
             try {
                 // 1. Create student folder
@@ -1302,7 +2118,7 @@
                     method: 'POST',
                     body: JSON.stringify({
                         values: [
-                            ['Comment', "This file is used by the Open Proficiency Learning system. Please don't manually make any changes."],
+                            ['Comment', "This file is used by the Competency Learning Kit system. Please don't manually make any changes."],
                             ['Student Name', name]
                         ]
                     })
@@ -1325,13 +2141,13 @@
                 await sheetsRequest(rootDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
                     method: 'POST',
                     body: JSON.stringify({
-                        values: [['Student', name, folderId, learnerDataId, artifactsId]]
+                        values: [['Student', name, folderId, learnerDataId, artifactsId, finalNickname, classroomId]]
                     })
                 });
 
                 log('Student added successfully.');
                 setStatus(`Student "${name}" added!`);
-                loadStudents();
+                if (!skipLoad) loadStudents();
             } catch (err) {
                 log(`Add student error: ${err.message}`);
                 setStatus(`Error adding student: ${err.message}`, 'error');
