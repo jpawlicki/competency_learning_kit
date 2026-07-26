@@ -4,11 +4,16 @@
  * The default backend storage solution is Google Drive, with cached data in browser-local and session storage.
  */
 
+
 // PUBLIC INTERFACES
 
 // Create a new storage hooked up to Google Drive.
 export function createStorageGoogleDrive() {
   return new StorageGoogleDrive();
+}
+
+export function createUIPrefsBrowserStorage() {
+  // TODO
 }
 
 export class Storage {
@@ -33,6 +38,18 @@ export class Storage {
   addEvidenceAndObservations() { throw new Error("Not implemented in superclass."); }
 }
 
-export class StorageGoogleDrive implements Storage {
+export class UIPrefs {
+  // Block direct instantiation.
+  // TODO
+
+  // TODO - add methods for UI prefs (recent competencies, etc.)
+}
+
+
+// IMPLEMENTATIONS
+
+class StorageGoogleDrive implements Storage {
   // TODO
 }
+
+class 
