@@ -46,6 +46,12 @@ learner and their advocates can be granted access. By default, individual
 observations are not included in these reports, though CLK provides an option
 to show observations as well.
 
+Replacing a traditional grading system with a competency-based learning program
+is a substantial change. To help ease the transition, CLK allows institutions
+to create "competency groups" that can provide specific alternative views of
+competencies. This allows an instutition to create alternative views of
+progress, for example by course or teacher.
+
 ## Getting Started (Educators)
 
 ## Competencies
@@ -113,6 +119,8 @@ document is the source of truth. Recognized types and subsequent columns are:
   - `Competency Group`: A unique ID, the name of the competency group, a
     semicolon-separated list of competencies, a long-form description of the
     competency group.
+  - `Learner Group`: A unique ID, the name of a learner group, a long-form
+    description of the competency group.
 
 ### The Learner Data Spreadsheet
 
@@ -122,6 +130,7 @@ the types are different:
   - `Comment`: A comment string for humans who find the spreadsheet.
   - `Student Name` (singleton): the name of the student (a checksum; the Root Data
     spreadsheet is authoritative).
+  - `Group`: The unique ID of a learner group to which this learner belongs.
   - `Read Permission`: An e-mail address of an account that should be able to
     read data about this specific learner (e.g. a parent/guardian's e-mail).
     This need not repeat accounts from the Global Read Permission.
@@ -135,10 +144,15 @@ the types are different:
     the account (e-mail) of the person entering the evidence.
   - `Observation`: A unique ID, the competency ID, the e-mail address of the
     user who entered the observation, the competency rating (0.0 to 1.0), the
-    timestamp of entry.
+    timestamp of entry, the visibility of the observation (PRIVATE,
+    INSTITUTION, ALL).
   - `Assessment`: A unique ID, a competency ID, the e-mail address of the
     assessor, the rating (0.0 to 1.0, with 0 interpreted as "not yet
     demonstrates" and 1.0 as "consistently demonstrates" and values between
     interpreted as "sometimes demonstrates"), a summative note, helpful
     guidance, a timestamp of entry.
+
+## Development Topics
+
+Developers (including AI agents) should also consult [AGENTS.md](./AGENTS.md).
 

@@ -558,7 +558,10 @@
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     <script src="competency_renderer.js"></script>
 
-    <script>
+    <script type="module">
+        import { createStorageGoogleDrive, createUIPrefsBrowserStorage } from '../js/data.js';
+        import { createGoogleClassroom } from '../js/google_classroom.js';
+
         /**
          * NOTE: The only currently configured trusted origin is http://localhost:8001.
          */
@@ -566,12 +569,10 @@
         
         // Permissions needed
         const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.rosters.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.coursework.me';
-        const FOLDER_NAME = 'Competency Learning Kit Data';
-        const ROOT_DATA_NAME = 'Root Data';
-        const LEARNERS_FOLDER_NAME = 'Learners';
-        const STORAGE_KEY = 'clk_folder_id';
-        const ROOT_DATA_KEY = 'clk_root_data_id';
-        const LEARNERS_KEY = 'clk_learners_folder_id';
+
+        const uiPrefs = createUIPrefsBrowserStorage();
+        const storage = createStorageGoogleDrive(uiPrefs);
+        const classroomService = createGoogleClassroom(uiPrefs);
 
         const authorizeButton = document.getElementById('authorize_button');
         const signoutButton = document.getElementById('signout_button');
@@ -581,10 +582,9 @@
         const storedIdEl = document.getElementById('stored-id');
         const statusEl = document.getElementById('status');
         const logEl = document.getElementById('log-output');
-        const TOKEN_STORAGE_KEY = 'clk_access_token';
 
         let tokenClient;
-        let accessToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+        let accessToken = uiPrefs.getAccessToken();
         let goalRenderer;
         let goals = [];
         let students = [];
@@ -625,10 +625,8 @@
         }
 
         async function initGoalsTab() {
-            const folderId = localStorage.getItem(STORAGE_KEY);
-            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
-            
-            if (!accessToken || !folderId || !rootDataId) {
+            const components = await storage.resolveProjectComponents();
+            if (!uiPrefs.getAccessToken() || !components || !components.folderId || !components.rootDataId) {
                 document.getElementById('goals_auth_warning').classList.remove('hidden');
                 document.getElementById('goals_editor').classList.add('hidden');
                 return;
@@ -648,34 +646,32 @@
         }
 
         async function loadGoals() {
-            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
-            log('Loading goals from Root Data...');
+            log('Loading competencies from Root Data...');
             try {
-                const data = await sheetsRequest(rootDataId, '/values/A:Z');
-                const rows = data.values || [];
-                
-                goals = rows
-                    .filter(row => row[0] === 'Competency' || row[0] === 'Goal')
-                    .map(row => ({
-                        id: row[1],
-                        name: row[2],
-                        parentId: row[3],
-                        startLevel: row[4],
-                        endLevel: row[5],
-                        position: row[6],
-                        width: row[7],
-                        description: row[8] || '',
-                        rubric: row[9] || '',
-                        color: row[10] || '#94a3b8'
+                const rootData = await storage.readRootData();
+                if (rootData && rootData.Competency) {
+                    goals = rootData.Competency.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        parentId: (c.foundationalIds && c.foundationalIds.length > 0) ? c.foundationalIds[0] : '-1',
+                        startLevel: c.startLevel,
+                        endLevel: c.endLevel,
+                        position: c.rank.toString(),
+                        width: c.width,
+                        description: c.description || '',
+                        rubric: c.rubric || '',
+                        color: c.color || '#94a3b8'
                     }));
+                } else {
+                    goals = [];
+                }
                 
-                log(`Loaded ${goals.length} goals.`);
-                console.log(goals);
+                log(`Loaded ${goals.length} competencies.`);
                 updateGoalSelectors();
                 setUnsaved(false);
             } catch (err) {
-                log(`Load goals error: ${err.message}`);
-                setStatus('Error loading goals.', 'error');
+                log(`Load competencies error: ${err.message}`);
+                setStatus('Error loading competencies.', 'error');
             }
         }
 
@@ -810,40 +806,33 @@
         };
 
         document.getElementById('save_goals_button').onclick = async () => {
-            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
-            log('Saving all goals to Drive...');
+            log('Saving all competencies to Drive...');
             setStatus('Saving...');
             
             try {
-                // 1. Fetch entire Root Data to preserve non-Goal/Competency rows
-                const data = await sheetsRequest(rootDataId, '/values/A:Z');
-                const existingRows = data.values || [];
-                
-                // 2. Filter out old Goal / Competency rows
-                const nonGoalRows = existingRows.filter(row => row[0] !== 'Goal' && row[0] !== 'Competency');
-                
-                // 3. Prepare new Competency rows
-                const goalRows = goals.map(g => [
-                    'Competency', g.id, g.name, g.parentId || '', '', 'ACTIVE', g.position || '0', g.description || '', g.rubric || '', g.color || '#94a3b8', g.startLevel || '0', g.endLevel || '3', g.width || '1'
-                ]);
-                
-                const newRows = [...nonGoalRows, ...goalRows];
+                const competencies = goals.map(g => ({
+                    id: g.id,
+                    name: g.name,
+                    foundationalIds: (g.parentId && g.parentId !== '-1') ? [g.parentId] : [],
+                    relatedIds: [],
+                    state: 'ACTIVE',
+                    rank: parseFloat(g.position) || 0,
+                    description: g.description || '',
+                    rubric: g.rubric || '',
+                    color: g.color || '#94a3b8',
+                    startLevel: g.startLevel || '0',
+                    endLevel: g.endLevel || '3',
+                    width: g.width || '1'
+                }));
 
-                // 4. Overwrite entire sheet
-                // First clear it
-                await sheetsRequest(rootDataId, '/values/A:Z:clear', { method: 'POST' });
-                // Then write new content
-                await sheetsRequest(rootDataId, '/values/A1?valueInputOption=USER_ENTERED', {
-                    method: 'PUT',
-                    body: JSON.stringify({ values: newRows })
-                });
+                await storage.saveCompetencies(competencies);
 
-                log('Goals saved successfully.');
-                setStatus('Goals saved to Drive.');
+                log('Competencies saved successfully.');
+                setStatus('Competencies saved to Drive.');
                 setUnsaved(false);
             } catch (err) {
                 log(`Save error: ${err.message}`);
-                setStatus('Error saving goals.', 'error');
+                setStatus('Error saving competencies.', 'error');
             }
         };
 
@@ -864,9 +853,10 @@
         }
 
         function updateDisplay() {
-            const folderId = localStorage.getItem(STORAGE_KEY);
-            storedIdEl.textContent = folderId || 'None';
+            const cached = uiPrefs.getProjectComponentIds();
+            storedIdEl.textContent = cached?.folderId || 'None';
             
+            accessToken = uiPrefs.getAccessToken();
             if (accessToken) {
                 authorizeButton.classList.add('hidden');
                 mainActions.classList.remove('hidden');
@@ -881,9 +871,10 @@
         }
 
         async function updateProjectStatus() {
-            const folderId = localStorage.getItem(STORAGE_KEY);
-            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
-            const learnersId = localStorage.getItem(LEARNERS_KEY);
+            const cached = uiPrefs.getProjectComponentIds();
+            const folderId = cached?.folderId;
+            const rootDataId = cached?.rootDataId;
+            const learnersId = cached?.learnersFolderId;
             
             const rootStatusEl = document.getElementById('root_data_status');
             const learnersStatusEl = document.getElementById('learners_folder_status');
@@ -914,17 +905,15 @@
 
         function gisLoaded() {
             try {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: CLIENT_ID,
+                tokenClient = uiPrefs.initTokenClient(google.accounts.oauth2, {
+                    clientId: CLIENT_ID,
                     scope: SCOPES,
                     callback: (resp) => {
                         if (resp.error !== undefined) {
-                            log(`Auth error: ${resp.error}`);
-                            setStatus(`Authentication failed: ${resp.error}`, 'error');
+                            log(`Auth status: ${resp.error}`);
+                            updateDisplay();
                             return;
                         }
-                        accessToken = resp.access_token;
-                        sessionStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
                         log('Authenticated successfully.');
                         updateDisplay();
                         searchForFolder();
@@ -932,10 +921,14 @@
                 });
                 log('Google Identity Services initialized.');
                 
-                if (accessToken) {
-                    log('Resuming session from storage...');
+                const userEmail = uiPrefs.getUserEmail();
+                if (uiPrefs.getAccessToken()) {
+                    log('Resuming session...');
                     updateDisplay();
                     searchForFolder();
+                } else if (userEmail) {
+                    log(`Attempting silent auth for ${userEmail}...`);
+                    uiPrefs.requestAccessToken(tokenClient, { interactive: false });
                 } else {
                     updateDisplay();
                 }
@@ -944,20 +937,22 @@
                 setStatus('Failed to initialize Google Identity Services.', 'error');
             }
         }
+        window.gisLoaded = gisLoaded;
 
         authorizeButton.onclick = () => {
-            tokenClient.requestAccessToken({ prompt: 'consent' });
+            uiPrefs.requestAccessToken(tokenClient, { interactive: true });
         };
 
         signoutButton.onclick = () => {
-            if (accessToken) {
-                google.accounts.oauth2.revoke(accessToken);
-                accessToken = null;
-                sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-                log('Signed out and session cleared.');
-                clearStatus();
-                updateDisplay();
+            const token = uiPrefs.getAccessToken();
+            if (token) {
+                google.accounts.oauth2.revoke(token);
             }
+            uiPrefs.clearAccessToken();
+            uiPrefs.clearUserEmail();
+            log('Signed out and session cleared.');
+            clearStatus();
+            updateDisplay();
         };
 
         searchButton.onclick = () => searchForFolder();
@@ -979,23 +974,7 @@
         document.getElementById('fetch_classrooms_button').onclick = () => fetchClassrooms();
         document.getElementById('import_students_button').onclick = () => importStudentsFromClassrooms();
 
-        async function classroomRequest(path, options = {}) {
-            const url = `https://classroom.googleapis.com/v1${path}`;
-            const headers = {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            };
 
-            const response = await fetch(url, { ...options, headers });
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.error?.message || 'Classroom API request failed');
-            }
-            
-            if (response.status === 204) return null;
-            return response.json();
-        }
 
         let allClassrooms = [];
         let linkedClassroomIds = new Set();
@@ -1004,8 +983,7 @@
             log('Fetching Google Classrooms...');
             setStatus('Fetching classrooms...');
             try {
-                const data = await classroomRequest('/courses?courseStates=ACTIVE');
-                allClassrooms = data.courses || [];
+                allClassrooms = await classroomService.fetchClassrooms();
                 log(`Found ${allClassrooms.length} active classrooms.`);
                 renderClassrooms();
                 document.getElementById('classroom_list_container').classList.remove('hidden');
@@ -1056,27 +1034,14 @@
         }
 
         async function saveLinkedClassrooms() {
-            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
-            if (!rootDataId) return;
-
             log('Updating linked classrooms in Root Data...');
             try {
-                const data = await sheetsRequest(rootDataId, '/values/A:Z');
-                const rows = data.values || [];
-                
-                const otherRows = rows.filter(row => row[0] !== 'Classroom' && row[0] !== 'Google Classroom');
-                const classroomRows = Array.from(linkedClassroomIds).map(id => {
+                const classroomObjects = Array.from(linkedClassroomIds).map(id => {
                     const course = allClassrooms.find(c => c.id === id);
-                    return ['Google Classroom', id, course ? course.name : 'Unknown'];
+                    return { id, name: course ? course.name : 'Unknown' };
                 });
 
-                const newRows = [...otherRows, ...classroomRows];
-
-                await sheetsRequest(rootDataId, '/values/A:Z:clear', { method: 'POST' });
-                await sheetsRequest(rootDataId, '/values/A1?valueInputOption=USER_ENTERED', {
-                    method: 'PUT',
-                    body: JSON.stringify({ values: newRows })
-                });
+                await storage.saveLinkedClassrooms(classroomObjects);
                 log('Linked classrooms updated.');
             } catch (err) {
                 log(`Save linked classrooms error: ${err.message}`);
@@ -1092,34 +1057,12 @@
 
             log(`Importing students from ${selectedIds.length} classrooms...`);
             setStatus('Importing students...');
-            
-            let totalImported = 0;
-            let totalSkipped = 0;
 
             try {
-                for (const courseId of selectedIds) {
-                    const course = allClassrooms.find(c => c.id === courseId);
-                    log(`Fetching students for: ${course ? course.name : courseId}`);
-                    const data = await classroomRequest(`/courses/${courseId}/students`);
-                    const classroomStudents = data.students || [];
-                    
-                    for (const cs of classroomStudents) {
-                        const name = cs.profile.name.fullName;
-                        // Check if student already exists
-                        if (students.some(s => s.name === name)) {
-                            log(`Skipping existing student: ${name}`);
-                            totalSkipped++;
-                            continue;
-                        }
-                        
-                        await addStudent(name, true, cs.userId);
-                        totalImported++;
-                    }
-                }
-                
+                const result = await classroomService.importStudentsFromClassrooms(selectedIds, students, storage);
                 await loadStudents();
-                log(`Import complete. ${totalImported} students added, ${totalSkipped} skipped.`);
-                setStatus(`Import complete! ${totalImported} added, ${totalSkipped} skipped.`);
+                log(`Import complete. ${result.importedCount} students added, ${result.skippedCount} skipped.`);
+                setStatus(`Import complete! ${result.importedCount} added, ${result.skippedCount} skipped.`);
             } catch (err) {
                 log(`Import error: ${err.message}`);
                 setStatus(`Error during import: ${err.message}`, 'error');
@@ -1127,10 +1070,9 @@
         }
 
         async function initEvidenceTab() {
-            const folderId = localStorage.getItem(STORAGE_KEY);
-            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
+            const components = await storage.resolveProjectComponents();
             
-            if (!accessToken || !folderId || !rootDataId) {
+            if (!uiPrefs.getAccessToken() || !components || !components.folderId || !components.rootDataId) {
                 document.getElementById('evidence_auth_warning').classList.remove('hidden');
                 document.getElementById('evidence_manager').classList.add('hidden');
                 return;
@@ -1158,14 +1100,15 @@
 
             log(`Fetching evidence for ${missingIds.length} students...`);
 
-            // Fetch in parallel with a bit of throttling if needed, but for now just parallel
             await Promise.all(missingIds.map(async (id) => {
                 try {
-                    const data = await sheetsRequest(id, '/values/A:K');
-                    studentEvidenceCache[id] = data.values || [];
+                    const dict = await storage.readLearnerData(id);
+                    studentEvidenceCache[id] = (dict.Evidence || []).map(e => [
+                        'Evidence', e.id, e.name, e.observations, (e.artifactIds || []).join(';'), e.note, e.timestamp, e.authorEmail
+                    ]);
                 } catch (err) {
                     log(`Error fetching evidence for ${id}: ${err.message}`);
-                    studentEvidenceCache[id] = []; // Mark as loaded to avoid retries
+                    studentEvidenceCache[id] = [];
                 }
             }));
         }
@@ -1271,57 +1214,27 @@
             document.getElementById('evidence_form').classList.toggle('hidden', getSelectedStudentIds().length === 0);
             updateBatchRatingTable();
         }
-        const GOAL_USAGE_KEY = 'clk_goal_usage';
-        const ASSIGNMENT_GOALS_KEY = 'clk_assignment_goals';
-        const STUDENT_USAGE_KEY = 'clk_student_usage';
-
         function recordGoalUsage(goalIds, evidenceName) {
-            let usage = JSON.parse(localStorage.getItem(GOAL_USAGE_KEY) || '{}');
-            const now = Date.now();
-            goalIds.forEach(id => {
-                usage[id] = now;
-            });
-            localStorage.setItem(GOAL_USAGE_KEY, JSON.stringify(usage));
-
             if (evidenceName) {
-                let assignmentGoals = JSON.parse(localStorage.getItem(ASSIGNMENT_GOALS_KEY) || '{}');
-                assignmentGoals[evidenceName.toLowerCase()] = {
-                    goalIds: goalIds,
-                    timestamp: now
-                };
-                localStorage.setItem(ASSIGNMENT_GOALS_KEY, JSON.stringify(assignmentGoals));
+                uiPrefs.recordCompetencyUsage(goalIds, evidenceName);
             }
         }
 
         function recordStudentUsage(studentIds) {
-            let usage = JSON.parse(localStorage.getItem(STUDENT_USAGE_KEY) || '{}');
-            const now = Date.now();
-            studentIds.forEach(id => {
-                usage[id] = now;
-            });
-            localStorage.setItem(STUDENT_USAGE_KEY, JSON.stringify(usage));
+            uiPrefs.recordStudentUsage(studentIds);
         }
 
         function getRecentStudentIds() {
-            const usage = JSON.parse(localStorage.getItem(STUDENT_USAGE_KEY) || '{}');
-            const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
-            return new Set(Object.keys(usage).filter(id => usage[id] > oneYearAgo));
+            return uiPrefs.getRecentStudentIds();
         }
 
         function getRecentGoalIds() {
-            const usage = JSON.parse(localStorage.getItem(GOAL_USAGE_KEY) || '{}');
-            const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
-            return Object.keys(usage).filter(id => usage[id] > oneYearAgo);
+            return uiPrefs.getRecentCompetencyIds();
         }
 
         function getGoalsForAssignment(evidenceName) {
             if (!evidenceName) return [];
-            const assignmentGoals = JSON.parse(localStorage.getItem(ASSIGNMENT_GOALS_KEY) || '{}');
-            const data = assignmentGoals[evidenceName.toLowerCase()];
-            if (!data) return [];
-            const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
-            if (data.timestamp < oneYearAgo) return [];
-            return data.goalIds;
+            return uiPrefs.getCompetenciesForAssignment(evidenceName);
         }
 
         function renderEvidenceGoalSelector() {
@@ -1562,8 +1475,7 @@
             assignmentSelector.innerHTML = '<option value="">Loading...</option>';
 
             try {
-                const data = await classroomRequest(`/courses/${courseId}/courseWork`);
-                const assignments = data.courseWork || [];
+                const assignments = await classroomService.fetchCourseWork(courseId);
                 
                 assignmentSelector.innerHTML = '<option value="">-- Select Assignment --</option>';
                 const newOpt = new Option('Create New Assignment...', 'NEW');
@@ -1576,7 +1488,6 @@
 
                 if (selectedId) {
                     assignmentSelector.value = selectedId;
-                    // Trigger change to update Evidence Name and visibility
                     assignmentSelector.dispatchEvent(new Event('change'));
                 }
             } catch (err) {
@@ -1610,10 +1521,9 @@
             loadEvidenceAssignments(courseId);
 
             try {
-                // Fetch roster for relevance grouping
                 log('Fetching course roster for relevance grouping...');
-                const rosterData = await classroomRequest(`/courses/${courseId}/students`);
-                currentCourseRoster = new Set((rosterData.students || []).map(s => s.userId));
+                const roster = await classroomService.fetchCourseRoster(courseId);
+                currentCourseRoster = new Set(roster.map(s => s.userId));
                 renderEvidenceStudentList();
             } catch (err) {
                 log(`Fetch roster error: ${err.message}`);
@@ -1660,7 +1570,7 @@
             const evidenceName = document.getElementById('evidence_name').value.trim();
             const note = document.getElementById('evidence_note').value.trim();
             const fileInput = document.getElementById('evidence_file');
-            const files = fileInput.files;
+            const files = Array.from(fileInput.files || []);
             
             if (studentIds.length === 0 || !evidenceName) {
                 alert('Please select students and provide an evidence name.');
@@ -1685,29 +1595,10 @@
             let finalAssignmentId = assignmentIdInput;
 
             try {
-                // 0. Handle Artifact Upload
-                const sourceFileIds = [];
-                if (files.length > 0) {
-                    const projectFolderId = localStorage.getItem(STORAGE_KEY);
-                    for (const file of files) {
-                        log(`Uploading artifact: ${file.name}`);
-                        const uploadResult = await uploadFileToDrive(file, projectFolderId ? [projectFolderId] : []);
-                        sourceFileIds.push({ id: uploadResult.id, name: file.name });
-                    }
-                }
-
-                // 1. Handle New Assignment Creation if needed
                 if (courseId && assignmentIdInput === 'NEW') {
                     const newTitle = evidenceName;
                     log(`Creating new assignment: ${newTitle}`);
-                    const newAW = await classroomRequest(`/courses/${courseId}/courseWork`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            title: newTitle,
-                            workType: 'ASSIGNMENT',
-                            state: 'PUBLISHED'
-                        })
-                    });
+                    const newAW = await classroomService.createCourseWork(courseId, newTitle);
                     finalAssignmentId = newAW.id;
                     log(`Created assignment ID: ${finalAssignmentId}`);
                 }
@@ -1716,62 +1607,32 @@
                     const student = students.find(s => s.learnerDataId === sid);
                     log(`Processing student: ${student.name}`);
 
-                    // 2. Copy Artifacts to student's folder
-                    const studentArtifactIds = [];
-                    for (const source of sourceFileIds) {
-                        log(`Copying artifact ${source.name} for ${student.name}...`);
-                        const copy = await driveRequest(`/files/${source.id}/copy`, {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                parents: [student.artifactsId],
-                                name: `${evidenceName} - ${student.name} - ${source.name}`
-                            })
-                        });
-                        studentArtifactIds.push(copy.id);
-                    }
-
-                    // 3. Prepare Ratings for this student
-                    const studentRatings = goalIds.map(gid => {
+                    const observations = goalIds.map(gid => {
                         const val = document.querySelector(`input[data-key="${sid}_${gid}"]`).value;
-                        return `${gid},${val || 0}`;
-                    }).join(';');
-
-                    // 4. Update Learner Data Spreadsheet (8 columns matching README Evidence schema)
-                    const newRow = ['Evidence', evidenceId, evidenceName, studentRatings, studentArtifactIds.join(';'), note, timestamp, userEmail];
-                    await sheetsRequest(sid, '/values/A1:append?valueInputOption=USER_ENTERED', {
-                        method: 'POST',
-                        body: JSON.stringify({ values: [newRow] })
+                        return {
+                            competencyId: gid,
+                            rating: parseFloat(val || 0),
+                            authorEmail: userEmail,
+                            timestamp: timestamp
+                        };
                     });
 
-                    // Update Cache
-                    if (studentEvidenceCache[sid]) {
-                        studentEvidenceCache[sid].push(newRow);
-                    }
+                    const evidenceObj = {
+                        id: evidenceId,
+                        name: evidenceName,
+                        note: note,
+                        timestamp: timestamp,
+                        authorEmail: userEmail
+                    };
 
-                    // 5. Classroom Sync
-                    if (courseId && finalAssignmentId) {
+                    await storage.addEvidenceAndObservations(sid, evidenceObj, observations, files);
+
+                    if (courseId && finalAssignmentId && student.classroomId) {
                         try {
                             const finalGrade = document.querySelector(`input[data-key="${sid}_classroom"]`).value;
                             if (finalGrade !== '') {
                                 log(`Syncing to Classroom for ${student.name}...`);
-                                // Find student's submission
-                                const lookupId = student.classroomId || student.name;
-                                const subData = await classroomRequest(`/courses/${courseId}/courseWork/${finalAssignmentId}/studentSubmissions?userId=${lookupId}`);
-                                
-                                if (subData.studentSubmissions && subData.studentSubmissions.length > 0) {
-                                    const submission = subData.studentSubmissions[0];
-                                    
-                                    log(`Updating classroom grade to ${finalGrade}`);
-                                    await classroomRequest(`/courses/${courseId}/courseWork/${finalAssignmentId}/studentSubmissions/${submission.id}?updateMask=assignedGrade,draftGrade`, {
-                                        method: 'PATCH',
-                                        body: JSON.stringify({
-                                            assignedGrade: parseFloat(finalGrade),
-                                            draftGrade: parseFloat(finalGrade)
-                                        })
-                                    });
-                                } else {
-                                    log(`Could not find Classroom submission for ${student.name}. Skipping sync.`);
-                                }
+                                await classroomService.syncStudentGrade(courseId, finalAssignmentId, student.classroomId, parseFloat(finalGrade));
                             }
                         } catch (clErr) {
                             log(`Classroom sync error for ${student.name}: ${clErr.message}`);
@@ -1786,15 +1647,12 @@
                 log('Batch submission complete.');
                 setStatus(`Successfully added evidence for ${studentIds.length} students.`);
                 
-                // If a new assignment was created, refresh the list and select it
                 if (courseId && assignmentIdInput === 'NEW' && finalAssignmentId) {
                     await loadEvidenceAssignments(courseId, finalAssignmentId);
                 }
 
-                // Reset form (Keep evidence name so the student list can correctly show "Already Assessed")
                 document.getElementById('evidence_note').value = '';
                 document.getElementById('evidence_file').value = '';
-                // Clear checkboxes
                 document.querySelectorAll('#evidence_student_list input:checked').forEach(cb => cb.checked = false);
                 document.getElementById('evidence_form').classList.add('hidden');
                 
@@ -1810,110 +1668,21 @@
             // Deprecated - replaced by batch list
         }
 
-        async function uploadFileToDrive(file, parents = []) {
-            const metadata = {
-                name: file.name,
-                parents: parents
-            };
 
-            const boundary = '-------314159265358979323846';
-            const delimiter = "\r\n--" + boundary + "\r\n";
-            const close_delim = "\r\n--" + boundary + "--";
-
-            const contentType = file.type || 'application/octet-stream';
-            
-            const metadataPart = 
-                'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-                JSON.stringify(metadata);
-                
-            const mediaPartHeader = 
-                '\r\nContent-Type: ' + contentType + '\r\n\r\n';
-
-            const blob = new Blob([
-                delimiter,
-                metadataPart,
-                delimiter,
-                mediaPartHeader,
-                file,
-                close_delim
-            ], { type: 'multipart/related; boundary=' + boundary });
-
-            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                },
-                body: blob
-            });
-
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.error?.message || 'File upload failed');
-            }
-
-            return await response.json();
-        }
-
-        async function driveRequest(path, options = {}) {
-            const url = `https://www.googleapis.com/drive/v3${path}`;
-            const headers = {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            };
-
-            const response = await fetch(url, { ...options, headers });
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.error?.message || 'Drive API request failed');
-            }
-            
-            if (response.status === 204) return null;
-            return response.json();
-        }
-
-        async function sheetsRequest(spreadsheetId, path, options = {}) {
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}${path}`;
-            const headers = {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            };
-
-            const response = await fetch(url, { ...options, headers });
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.error?.message || 'Sheets API request failed');
-            }
-
-            if (response.status === 204) return null;
-            return response.json();
-        }
 
         async function searchForFolder() {
-            log(`Searching for "${FOLDER_NAME}"...`);
+            log('Searching for CLK project...');
             clearStatus();
             try {
-                const query = encodeURIComponent(`name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
-                const data = await driveRequest(`/files?q=${query}&fields=files(id,name,webViewLink)`);
-                
-                const files = data.files;
-                if (files && files.length > 0) {
-                    const folder = files[0];
-                    log(`Found: ${folder.id}`);
-                    localStorage.setItem(STORAGE_KEY, folder.id);
-                    
-                    // Search for Root Data and Learners folder inside
-                    await searchProjectComponents(folder.id);
-                    
+                const components = await storage.resolveProjectComponents();
+                if (components && components.folderId) {
+                    log(`Found: ${components.folderId}`);
                     updateDisplay();
-                    setStatus(`Folder found! <a href="${folder.webViewLink}" target="_blank">View in Drive</a>`);
+                    setStatus('Folder found!');
                 } else {
                     log('Folder not found.');
                     setStatus('Folder not found. You can create a new one.', 'error');
-                    localStorage.removeItem(STORAGE_KEY);
-                    localStorage.removeItem(ROOT_DATA_KEY);
-                    localStorage.removeItem(LEARNERS_KEY);
+                    uiPrefs.clearProjectComponentIds();
                     updateDisplay();
                 }
             } catch (err) {
@@ -1922,114 +1691,15 @@
             }
         }
 
-        async function searchProjectComponents(parentId) {
-            log('Searching for project components...');
-            const query = encodeURIComponent(`'${parentId}' in parents and trashed = false`);
-            const data = await driveRequest(`/files?q=${query}&fields=files(id,name,mimeType)`);
-            
-            let rootDataId = null;
-            let learnersId = null;
-
-            for (const file of data.files) {
-                if (file.name === ROOT_DATA_NAME && file.mimeType === 'application/vnd.google-apps.spreadsheet') {
-                    rootDataId = file.id;
-                } else if (file.name === LEARNERS_FOLDER_NAME && file.mimeType === 'application/vnd.google-apps.folder') {
-                    learnersId = file.id;
-                }
-            }
-
-            if (rootDataId) localStorage.setItem(ROOT_DATA_KEY, rootDataId);
-            else localStorage.removeItem(ROOT_DATA_KEY);
-
-            if (learnersId) localStorage.setItem(LEARNERS_KEY, learnersId);
-            else localStorage.removeItem(LEARNERS_KEY);
-        }
-
         async function createNewFolder() {
-            log('Creating folder...');
-            clearStatus();
-            try {
-                const data = await driveRequest('/files?fields=id,name,webViewLink', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name: FOLDER_NAME,
-                        mimeType: 'application/vnd.google-apps.folder'
-                    })
-                });
-                
-                log(`Created: ${data.id}`);
-                localStorage.setItem(STORAGE_KEY, data.id);
-                localStorage.removeItem(ROOT_DATA_KEY);
-                localStorage.removeItem(LEARNERS_KEY);
-                updateDisplay();
-
-                setStatus(`Folder created! <a href="${data.webViewLink}" target="_blank">View in Drive</a>`);
-            } catch (err) {
-                log(`Create error: ${err.message}`);
-                setStatus('Error creating folder.', 'error');
-            }
+            log('Creating project...');
+            return initializeProject();
         }
 
         async function initializeProject() {
             log('Initializing project components...');
-            let parentId = localStorage.getItem(STORAGE_KEY);
-
             try {
-                if (!parentId) {
-                    log(`Creating root folder "${FOLDER_NAME}"...`);
-                    const folder = await driveRequest('/files?fields=id', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: FOLDER_NAME,
-                            mimeType: 'application/vnd.google-apps.folder'
-                        })
-                    });
-                    parentId = folder.id;
-                    localStorage.setItem(STORAGE_KEY, parentId);
-                    log(`Root folder created: ${parentId}`);
-                }
-
-                let rootDataId = localStorage.getItem(ROOT_DATA_KEY);
-                let learnersId = localStorage.getItem(LEARNERS_KEY);
-
-                if (!rootDataId) {
-                    log('Creating Root Data spreadsheet...');
-                    const rd = await driveRequest('/files?fields=id', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: ROOT_DATA_NAME,
-                            mimeType: 'application/vnd.google-apps.spreadsheet',
-                            parents: [parentId]
-                        })
-                    });
-                    rootDataId = rd.id;
-                    localStorage.setItem(ROOT_DATA_KEY, rootDataId);
-                    log(`Root Data created: ${rootDataId}`);
-
-                    // Initialize Root Data with warning comment
-                    await sheetsRequest(rootDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            values: [['Comment', "This file is used by the Competency Learning Kit system. Please don't manually make any changes."]]
-                        })
-                    });
-                }
-
-                if (!learnersId) {
-                    log('Creating Learners folder...');
-                    const l = await driveRequest('/files?fields=id', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: LEARNERS_FOLDER_NAME,
-                            mimeType: 'application/vnd.google-apps.folder',
-                            parents: [parentId]
-                        })
-                    });
-                    learnersId = l.id;
-                    localStorage.setItem(LEARNERS_KEY, learnersId);
-                    log(`Learners folder created: ${learnersId}`);
-                }
-
+                await storage.initializeData('Competency Learning Kit');
                 updateDisplay();
                 setStatus('Project initialized successfully.');
             } catch (err) {
@@ -2039,31 +1709,14 @@
         }
 
         async function loadStudents() {
-            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
-            if (!rootDataId) return;
-
             log('Loading students & project data...');
             const listEl = document.getElementById('student_list');
             listEl.innerHTML = '<li>Loading...</li>';
 
             try {
-                const data = await sheetsRequest(rootDataId, '/values/A:Z');
-                const rows = data.values || [];
-                
-                // Load Students
-                students = rows.filter(row => row[0] === 'Student').map(row => ({
-                    name: row[1],
-                    folderId: row[2],
-                    learnerDataId: row[3],
-                    artifactsId: row[4],
-                    nickname: row[5] || row[1],
-                    classroomId: row[6] || ''
-                }));
-
-                // Load Linked Classrooms
-                linkedClassroomIds = new Set(
-                    rows.filter(row => row[0] === 'Classroom').map(row => row[1])
-                );
+                const rootData = await storage.readRootData();
+                students = rootData?.Student || [];
+                linkedClassroomIds = new Set((rootData?.['Google Classroom'] || []).map(c => c.id));
 
                 listEl.innerHTML = '';
                 if (students.length === 0) {
@@ -2084,67 +1737,8 @@
 
         async function addStudent(name, skipLoad = false, classroomId = '', nickname = '') {
             log(`Adding student: ${name}...`);
-            const learnersId = localStorage.getItem(LEARNERS_KEY);
-            const rootDataId = localStorage.getItem(ROOT_DATA_KEY);
-            const finalNickname = nickname || name;
-            
             try {
-                // 1. Create student folder
-                log('Creating student folder...');
-                const studentFolder = await driveRequest('/files?fields=id', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name: name,
-                        mimeType: 'application/vnd.google-apps.folder',
-                        parents: [learnersId]
-                    })
-                });
-                const folderId = studentFolder.id;
-
-                // 2. Create Learner Data spreadsheet
-                log('Creating Learner Data spreadsheet...');
-                const learnerData = await driveRequest('/files?fields=id', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name: 'Learner Data',
-                        mimeType: 'application/vnd.google-apps.spreadsheet',
-                        parents: [folderId]
-                    })
-                });
-                const learnerDataId = learnerData.id;
-
-                // Initialize Learner Data with warning comment and Student Name
-                await sheetsRequest(learnerDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        values: [
-                            ['Comment', "This file is used by the Competency Learning Kit system. Please don't manually make any changes."],
-                            ['Student Name', name]
-                        ]
-                    })
-                });
-
-                // 3. Create Artifacts folder
-                log('Creating Artifacts folder...');
-                const artifactsFolder = await driveRequest('/files?fields=id', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name: 'Artifacts',
-                        mimeType: 'application/vnd.google-apps.folder',
-                        parents: [folderId]
-                    })
-                });
-                const artifactsId = artifactsFolder.id;
-
-                // 4. Update Root Data
-                log('Updating Root Data...');
-                await sheetsRequest(rootDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        values: [['Student', name, folderId, learnerDataId, artifactsId, finalNickname, classroomId]]
-                    })
-                });
-
+                await storage.addLearner(name, nickname || name, classroomId);
                 log('Student added successfully.');
                 setStatus(`Student "${name}" added!`);
                 if (!skipLoad) loadStudents();
@@ -2154,27 +1748,16 @@
             }
         }
 
-        let itemsToDelete = [];
-
         async function previewDelete() {
-            const folderId = localStorage.getItem(STORAGE_KEY);
-            if (!folderId) return;
-
             log('Scanning project for deletion...');
             const previewSection = document.getElementById('delete_preview_section');
             const listEl = document.getElementById('delete_list');
             
             previewSection.classList.remove('hidden');
             listEl.innerHTML = '<li>Scanning...</li>';
-            itemsToDelete = [];
 
             try {
-                // Get the root folder itself
-                const rootFolder = await driveRequest(`/files/${folderId}?fields=id,name`);
-                itemsToDelete.push(rootFolder);
-
-                await recursiveList(folderId, itemsToDelete);
-                
+                const itemsToDelete = await storage.scanProjectForDeletion();
                 listEl.innerHTML = '';
                 itemsToDelete.forEach(item => {
                     const li = document.createElement('li');
@@ -2188,32 +1771,11 @@
             }
         }
 
-        async function recursiveList(parentId, list) {
-            const query = encodeURIComponent(`'${parentId}' in parents and trashed = false`);
-            const data = await driveRequest(`/files?q=${query}&fields=files(id,name,mimeType)`);
-            
-            for (const file of data.files) {
-                list.push(file);
-                if (file.mimeType === 'application/vnd.google-apps.folder') {
-                    await recursiveList(file.id, list);
-                }
-            }
-        }
-
         async function confirmDelete() {
-            const folderId = localStorage.getItem(STORAGE_KEY);
-            if (!folderId) return;
-
             log('Deleting project...');
             try {
-                // We only actually need to delete the root folder, Drive handles the rest.
-                await driveRequest(`/files/${folderId}`, { method: 'DELETE' });
-                
+                await storage.deleteProject();
                 log('Project deleted.');
-                localStorage.removeItem(STORAGE_KEY);
-                localStorage.removeItem(ROOT_DATA_KEY);
-                localStorage.removeItem(LEARNERS_KEY);
-                
                 document.getElementById('delete_preview_section').classList.add('hidden');
                 updateDisplay();
                 setStatus('Project deleted successfully.');

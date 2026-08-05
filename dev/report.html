@@ -190,19 +190,19 @@
     <script src="competency_renderer.js"></script>
     <script src="report.js"></script>
 
-    <!-- Main script block: Defined BEFORE GIS to ensure all functions exist for callbacks -->
-    <script>
+    <script type="module">
+        import { createStorageGoogleDrive, createUIPrefsBrowserStorage } from '../js/data.js';
+
         const CLIENT_ID = '767614918217-040505l01huso2e5f42bavj5magf27p8.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets';
-        const STORAGE_KEY = 'clk_folder_id';
-        const ROOT_DATA_KEY = 'clk_root_data_id';
-        const TOKEN_STORAGE_KEY = 'clk_access_token';
-        const ROOT_DATA_NAME = 'Root Data';
+
+        const uiPrefs = createUIPrefsBrowserStorage();
+        const storage = createStorageGoogleDrive(uiPrefs);
 
         let goals = [];
         let renderer;
         let tokenClient;
-        let accessToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+        let accessToken = uiPrefs.getAccessToken();
         let currentHoverId = null;
         let currentScores = null;
 
@@ -216,6 +216,7 @@
             const authBtn = document.getElementById('authorize_button');
             const authNotice = document.getElementById('auth_notice');
             
+            accessToken = uiPrefs.getAccessToken();
             if (accessToken) {
                 authBtn.classList.add('hidden');
                 authNotice.classList.add('hidden');
@@ -223,30 +224,6 @@
                 authBtn.classList.remove('hidden');
                 authNotice.classList.remove('hidden');
             }
-        }
-
-        async function driveRequest(path, options = {}) {
-            const url = `https://www.googleapis.com/drive/v3${path}`;
-            const headers = {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            };
-            const response = await fetch(url, { ...options, headers });
-            if (!response.ok) throw new Error('Drive API request failed');
-            return response.status === 204 ? null : response.json();
-        }
-
-        async function sheetsRequest(spreadsheetId, path, options = {}) {
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}${path}`;
-            const headers = {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            };
-            const response = await fetch(url, { ...options, headers });
-            if (!response.ok) throw new Error('Sheets API request failed');
-            return response.status === 204 ? null : response.json();
         }
 
         function loadDummyData() {
@@ -258,22 +235,25 @@
             ];
         }
 
-        async function loadGoals(rootDataId) {
+        async function loadGoals() {
             try {
-                const data = await sheetsRequest(rootDataId, '/values/A:Z');
-                const rows = data.values || [];
-                goals = rows.filter(r => r[0] === 'Competency' || r[0] === 'Goal').map(r => ({
-                    id: r[1],
-                    name: r[2],
-                    parentId: r[3],
-                    startLevel: r[4],
-                    endLevel: r[5],
-                    position: r[6],
-                    width: r[7],
-                    color: r[10] || '#94a3b8'
-                }));
+                const rootData = await storage.readRootData();
+                if (rootData && rootData.Competency && rootData.Competency.length > 0) {
+                    goals = rootData.Competency.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        parentId: (c.foundationalIds && c.foundationalIds.length > 0) ? c.foundationalIds[0] : '-1',
+                        startLevel: c.startLevel,
+                        endLevel: c.endLevel,
+                        position: c.rank.toString(),
+                        width: c.width,
+                        color: c.color || '#94a3b8'
+                    }));
+                } else {
+                    loadDummyData();
+                }
             } catch (err) {
-                console.error("Error loading goals:", err);
+                console.error("Error loading competencies:", err);
                 loadDummyData();
             }
         }
@@ -559,42 +539,35 @@
 
         async function initProject() {
             document.getElementById('loading_status').classList.remove('hidden');
-            let rootDataId = localStorage.getItem(ROOT_DATA_KEY);
-            if (!rootDataId) {
-                try {
-                    const folderId = localStorage.getItem(STORAGE_KEY);
-                    if (folderId) {
-                        const query = encodeURIComponent(`'${folderId}' in parents and name = '${ROOT_DATA_NAME}' and trashed = false`);
-                        const data = await driveRequest(`/files?q=${query}`);
-                        if (data.files && data.files.length > 0) {
-                            rootDataId = data.files[0].id;
-                            localStorage.setItem(ROOT_DATA_KEY, rootDataId);
-                        }
-                    }
-                } catch (e) { console.error(e); }
-            }
-
-            if (rootDataId) await loadGoals(rootDataId);
-            else loadDummyData();
+            await loadGoals();
             document.getElementById('loading_status').classList.add('hidden');
             generateReport('typical-5');
         }
 
         function gisLoaded() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
+            tokenClient = uiPrefs.initTokenClient(google.accounts.oauth2, {
+                clientId: CLIENT_ID,
                 scope: SCOPES,
                 callback: (resp) => {
-                    if (resp.error) return;
-                    accessToken = resp.access_token;
-                    sessionStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+                    if (resp.error) {
+                        updateDisplay();
+                        return;
+                    }
                     updateDisplay();
                     initProject();
                 },
             });
-            updateDisplay();
-            if (accessToken) initProject();
+            
+            const userEmail = uiPrefs.getUserEmail();
+            if (uiPrefs.getAccessToken()) {
+                initProject();
+            } else if (userEmail) {
+                uiPrefs.requestAccessToken(tokenClient, { interactive: false });
+            } else {
+                updateDisplay();
+            }
         }
+        window.gisLoaded = gisLoaded;
 
         // DOM Setup
         document.addEventListener('DOMContentLoaded', () => {
