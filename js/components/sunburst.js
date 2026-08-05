@@ -66,6 +66,10 @@ export class CLKSunburst extends HTMLElement {
         this.dragTheta = 0;
         this.dragLayer = -1;
         this.customDragItem = null;
+        this.selectedItemId = null;
+        this.isDraggingHandle = null;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
         
         this.svg.addEventListener('dragover', this.handleDragOver.bind(this));
         this.svg.addEventListener('dragleave', this.handleDragLeave.bind(this));
@@ -107,6 +111,19 @@ export class CLKSunburst extends HTMLElement {
         };
     }
 
+    getContrastColor(hexColor) {
+        if (!hexColor) return '#000000';
+        hexColor = hexColor.replace('#', '');
+        if (hexColor.length === 3) {
+            hexColor = hexColor.split('').map(c => c + c).join('');
+        }
+        const r = parseInt(hexColor.substr(0, 2), 16) || 0;
+        const g = parseInt(hexColor.substr(2, 2), 16) || 0;
+        const b = parseInt(hexColor.substr(4, 2), 16) || 0;
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return (yiq >= 128) ? '#000000' : '#ffffff';
+    }
+
     // Generate SVG path 'd' attribute for an annular sector
     describeArc(x, y, innerRadius, outerRadius, startAngle, endAngle) {
         // If it's a full circle
@@ -135,7 +152,7 @@ export class CLKSunburst extends HTMLElement {
 
     buildTree() {
         // Build a tree from this.data to compute start/end angles
-        // this.data[layerIndex][itemIndex] = { id, anchor, color, name }
+        // this.data[layerIndex][itemIndex] = { id, anchor, span, color, name }
         
         const root = { id: 'root', children: [], width: 0, startTheta: 0, endTheta: 2 * Math.PI };
         
@@ -150,75 +167,103 @@ export class CLKSunburst extends HTMLElement {
                     originalData: this.data[i][j],
                     layerIndex: i,
                     itemIndex: j,
+                    parents: [],
                     children: [],
-                    width: 0,
+                    weight: 0,
                     startTheta: 0,
-                    endTheta: 0
+                    endTheta: 0,
+                    slots: []
                 });
             }
         }
 
         // Link nodes
-        for (let i = 0; i < layers.length; i++) {
+        for (let i = 1; i < layers.length; i++) {
             for (let j = 0; j < layers[i].length; j++) {
                 const node = layers[i][j];
-                if (i === 0) {
-                    root.children.push(node);
-                } else {
-                    const anchorIdx = node.originalData.anchor;
-                    if (layers[i-1] && layers[i-1][anchorIdx]) {
-                        layers[i-1][anchorIdx].children.push(node);
-                    } else {
-                        // Fallback: append to first element if invalid anchor, or root if empty
-                        if (layers[i-1] && layers[i-1].length > 0) {
-                            layers[i-1][0].children.push(node);
-                        } else {
-                            root.children.push(node);
-                        }
+                const anchorIdx = node.originalData.anchor || 0;
+                const span = node.originalData.span || 1;
+                
+                for (let s = 0; s < span; s++) {
+                    const pIdx = anchorIdx + s;
+                    if (layers[i-1] && layers[i-1][pIdx]) {
+                        const pNode = layers[i-1][pIdx];
+                        pNode.children.push(node);
+                        node.parents.push(pNode);
                     }
                 }
             }
         }
 
-        // Identify leaves and assign base widths (1 unit per leaf)
-        let totalLeaves = 0;
-        const traverseLeaves = (node) => {
-            if (node.children.length === 0) {
-                node.width = 1;
-                if (node.id !== 'root') totalLeaves++;
-            } else {
-                let sum = 0;
-                for (const child of node.children) {
-                    traverseLeaves(child);
-                    sum += child.width;
+        // Compute weights bottom-up
+        for (let i = layers.length - 1; i >= 0; i--) {
+            for (let j = 0; j < layers[i].length; j++) {
+                const node = layers[i][j];
+                if (node.children.length === 0) {
+                    node.weight = 1;
+                } else {
+                    node.weight = 0;
+                    for (const child of node.children) {
+                        node.weight += child.weight / child.parents.length;
+                    }
                 }
-                node.width = sum;
             }
-        };
-        
-        traverseLeaves(root);
-        
-        if (totalLeaves === 0 && root.children.length > 0) {
-            // Handle edge case where there are no leaves? Shouldn't happen.
-            totalLeaves = root.children.length;
         }
 
-        // Total width of the tree is the width of root.
-        // Assign angles.
-        const widthToRadians = totalLeaves > 0 ? (2 * Math.PI) / root.width : 0;
-        
-        const assignAngles = (node, startTheta) => {
-            node.startTheta = startTheta;
-            node.endTheta = startTheta + (node.width * widthToRadians);
+        // Assign angles top-down
+        if (layers.length > 0 && layers[0].length > 0) {
+            let currentStart = 0;
+            const totalLayer0Weight = layers[0].reduce((sum, n) => sum + n.weight, 0);
             
-            let currentTheta = startTheta;
-            for (const child of node.children) {
-                assignAngles(child, currentTheta);
-                currentTheta += (child.width * widthToRadians);
+            for (const node of layers[0]) {
+                const angle = totalLayer0Weight > 0 ? (node.weight / totalLayer0Weight) * (Math.PI * 2) : 0;
+                node.startTheta = currentStart;
+                node.endTheta = currentStart + angle;
+                currentStart = node.endTheta;
             }
-        };
 
-        assignAngles(root, 0);
+            for (let i = 1; i < layers.length; i++) {
+                // Pass down slots from parents
+                for (const pNode of layers[i-1]) {
+                    let pStart = pNode.startTheta;
+                    for (const child of pNode.children) {
+                        const childShareWeight = child.weight / child.parents.length;
+                        const shareRatio = pNode.weight > 0 ? (childShareWeight / pNode.weight) : 0;
+                        const slotAngle = shareRatio * (pNode.endTheta - pNode.startTheta);
+                        
+                        child.slots.push({
+                            parent: pNode,
+                            startTheta: pStart,
+                            endTheta: pStart + slotAngle
+                        });
+                        
+                        pStart += slotAngle;
+                    }
+                }
+                
+                // Construct child arcs from slots
+                for (const node of layers[i]) {
+                    if (node.slots && node.slots.length > 0) {
+                        node.startTheta = node.slots[0].startTheta;
+                        node.endTheta = node.slots[node.slots.length - 1].endTheta;
+                    }
+                }
+            }
+        }
+
+        // Deep copy for logging so the browser console doesn't show mutated state
+        console.log('sunburst buildTree result', JSON.parse(JSON.stringify(
+            layers.map(layer => layer.map(n => ({
+                id: n.originalData.id,
+                anchor: n.originalData.anchor,
+                span: n.originalData.span,
+                weight: n.weight,
+                startTheta: n.startTheta,
+                endTheta: n.endTheta,
+                parents: n.parents.map(p => p.originalData.id),
+                slots: n.slots.map(s => ({ start: s.startTheta, end: s.endTheta }))
+            })))
+        )));
 
         return { root, layers };
     }
@@ -281,10 +326,14 @@ export class CLKSunburst extends HTMLElement {
                     path.style.cursor = 'grab';
                     path.addEventListener('mousedown', (e) => {
                         e.preventDefault();
+                        this.selectedItemId = node.originalData.id;
                         this.customDragItem = { id: node.originalData.id, name: node.originalData.name, color: node.originalData.color };
                         this.setDraggedItem(this.customDragItem);
+                        this.dragStartX = e.clientX;
+                        this.dragStartY = e.clientY;
                         path.style.opacity = '0.5';
                         e.stopPropagation();
+                        this.render(); // Redraw with selection
                     });
 
                     // Add Title for hover tooltip
@@ -317,9 +366,79 @@ export class CLKSunburst extends HTMLElement {
                         if (shortName.length > 15) shortName = shortName.substring(0, 12) + '...';
                         text.textContent = shortName;
                         
+                        const bgColor = node.originalData.color || '#94a3b8';
+                        text.setAttribute('fill', this.getContrastColor(bgColor));
+                        
                         this.svg.appendChild(text);
                     }
                 }
+            }
+        }
+
+        this.updateSelection();
+    }
+
+    drawHandle(cx, cy, radius, theta, node, type) {
+        const pos = this.polarToCartesian(cx, cy, radius, theta);
+        const handle = document.createElementNS(this.svgNS, 'circle');
+        handle.setAttribute('class', 'drag-handle');
+        handle.setAttribute('cx', pos.x);
+        handle.setAttribute('cy', pos.y);
+        handle.setAttribute('r', '6');
+        handle.setAttribute('fill', '#fff');
+        handle.setAttribute('stroke', '#3b82f6');
+        handle.setAttribute('stroke-width', '2');
+        handle.style.cursor = 'crosshair';
+        
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.isDraggingHandle = { node, type };
+        });
+        
+        this.svg.appendChild(handle);
+    }
+
+    updateSelection() {
+        const oldHandles = this.svg.querySelectorAll('.drag-handle, .selection-stroke');
+        oldHandles.forEach(h => h.remove());
+
+        if (!this.selectedItemId) return;
+
+        let selectedNode = null;
+        if (this.computedLayers) {
+            for (const layer of this.computedLayers) {
+                for (const node of layer) {
+                    if (node.originalData.id === this.selectedItemId) {
+                        selectedNode = node;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (!selectedNode || !this.renderContext) return;
+
+        const { cx, cy, rInner, layerWidth } = this.renderContext;
+        const currentInner = rInner + selectedNode.layerIndex * layerWidth;
+        const currentOuter = rInner + (selectedNode.layerIndex + 1) * layerWidth;
+        const midRadius = (currentInner + currentOuter) / 2;
+        
+        const stroke = document.createElementNS(this.svgNS, 'path');
+        stroke.setAttribute('class', 'selection-stroke');
+        stroke.setAttribute('d', this.describeArc(cx, cy, currentInner, currentOuter, selectedNode.startTheta, selectedNode.endTheta));
+        stroke.setAttribute('fill', 'none');
+        stroke.setAttribute('stroke', '#3b82f6');
+        stroke.setAttribute('stroke-width', '3');
+        stroke.style.pointerEvents = 'none';
+        this.svg.appendChild(stroke);
+
+        if (selectedNode.layerIndex > 0) {
+            this.drawHandle(cx, cy, midRadius, selectedNode.startTheta, selectedNode, 'left');
+            this.drawHandle(cx, cy, midRadius, selectedNode.endTheta, selectedNode, 'right');
+            
+            if (this.isDraggingHandle && this.isDraggingHandle.node.originalData.id === selectedNode.originalData.id) {
+                this.isDraggingHandle.node = selectedNode;
             }
         }
     }
@@ -418,11 +537,26 @@ export class CLKSunburst extends HTMLElement {
     }
 
     handleWindowMouseMove(e) {
+        if (this.isDraggingHandle) {
+            const polar = this.getPolarFromMouse(e);
+            if (polar) {
+                this.updateHandleDrag(polar.theta);
+            }
+            return;
+        }
+
         if (!this.customDragItem) return;
+        
+        if (!this.isDragging) {
+            if (Math.abs(e.clientX - this.dragStartX) > 5 || Math.abs(e.clientY - this.dragStartY) > 5) {
+                this.isDragging = true;
+            } else {
+                return;
+            }
+        }
         
         const polar = this.getPolarFromMouse(e);
         if (polar) {
-            this.isDragging = true;
             this.dragLayer = polar.layer;
             this.dragTheta = polar.theta;
             this.updateDragIndicator();
@@ -430,11 +564,25 @@ export class CLKSunburst extends HTMLElement {
     }
 
     handleWindowMouseUp(e) {
+        if (this.isDraggingHandle) {
+            this.isDraggingHandle = null;
+            return;
+        }
+
         if (!this.customDragItem) return;
+        
+        const wasDragging = this.isDragging;
         
         const polar = this.getPolarFromMouse(e);
         this.isDragging = false;
         this.updateDragIndicator();
+        
+        if (!wasDragging) {
+            // Just a click to select, do not trigger a drop
+            this.customDragItem = null;
+            this.setDraggedItem(null);
+            return;
+        }
         
         const rect = this.svg.getBoundingClientRect();
         const isInside = (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom);
@@ -450,6 +598,57 @@ export class CLKSunburst extends HTMLElement {
         this.customDragItem = null;
         this.setDraggedItem(null);
         this.render();
+    }
+
+    updateHandleDrag(mouseTheta) {
+        const { node, type } = this.isDraggingHandle;
+        
+        const parentLayer = this.computedLayers[node.layerIndex - 1];
+        if (!parentLayer || parentLayer.length === 0) return;
+        
+        let targetParentIdx = -1;
+        for (let i = 0; i < parentLayer.length; i++) {
+            const pNode = parentLayer[i];
+            if (mouseTheta >= pNode.startTheta && mouseTheta <= pNode.endTheta) {
+                targetParentIdx = i;
+                break;
+            }
+        }
+        
+        if (targetParentIdx !== -1) {
+            const currentAnchor = node.originalData.anchor || 0;
+            const currentSpan = node.originalData.span || 1;
+            const endParentIdx = currentAnchor + currentSpan - 1;
+            
+            let newAnchor = currentAnchor;
+            let newSpan = currentSpan;
+            
+            if (type === 'left') {
+                if (targetParentIdx <= endParentIdx) {
+                    newAnchor = targetParentIdx;
+                    newSpan = endParentIdx - targetParentIdx + 1;
+                }
+            } else if (type === 'right') {
+                if (targetParentIdx >= currentAnchor) {
+                    newSpan = targetParentIdx - currentAnchor + 1;
+                }
+            }
+            
+            if (newAnchor !== currentAnchor || newSpan !== currentSpan) {
+                // Update local data immediately to prevent jitter before re-render
+                node.originalData.anchor = newAnchor;
+                node.originalData.span = newSpan;
+                
+                this.dispatchEvent(new CustomEvent('sunburst-resize', {
+                    detail: {
+                        id: node.originalData.id,
+                        layer: node.layerIndex,
+                        anchor: newAnchor,
+                        span: newSpan
+                    }
+                }));
+            }
+        }
     }
 
     processDrop(polar, item) {

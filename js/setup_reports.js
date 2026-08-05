@@ -70,15 +70,26 @@ export function initSetupReports(AppState, storage) {
         return layers.map(layerStr => {
             if (!layerStr) return [];
             return layerStr.split(':').map(pair => {
-                const [id, anchor] = pair.split('#');
-                return { id, anchor: parseInt(anchor, 10) || 0 };
+                const parts = pair.split('#');
+                const id = parts[0];
+                const anchorParts = parts[1] ? parts[1].split('-') : ['0'];
+                return { 
+                    id, 
+                    anchor: parseInt(anchorParts[0], 10) || 0,
+                    span: parseInt(anchorParts[1], 10) || 1
+                };
             });
         });
     }
 
     function serializeConfig(dataArr) {
         return dataArr.map(layer => {
-            return layer.map(item => `${item.id}#${item.anchor}`).join(':');
+            return layer.map(item => {
+                if (item.span && item.span > 1) {
+                    return `${item.id}#${item.anchor}-${item.span}`;
+                }
+                return `${item.id}#${item.anchor}`;
+            }).join(':');
         }).join(';');
     }
 
@@ -271,7 +282,7 @@ export function initSetupReports(AppState, storage) {
             currentData.push([]);
         }
         
-        currentData[layer].splice(insertIndex, 0, { id: item.id, anchor: anchor });
+        currentData[layer].splice(insertIndex, 0, { id: item.id, anchor: anchor, span: 1 });
         
         // 3. Fix anchors for the layer that was just inserted into!
         // We inserted an element at insertIndex. 
@@ -291,6 +302,23 @@ export function initSetupReports(AppState, storage) {
 
     sunburstEl.addEventListener('sunburst-remove', (e) => {
         removeCompetencyFromConfig(e.detail.id);
+    });
+
+    sunburstEl.addEventListener('sunburst-resize', (e) => {
+        const { id, layer, anchor, span } = e.detail;
+        if (layer >= 0 && layer < currentData.length) {
+            const itemIdx = currentData[layer].findIndex(i => i.id === id);
+            if (itemIdx !== -1) {
+                const item = currentData[layer][itemIdx];
+                item.anchor = anchor;
+                item.span = span;
+                
+                // Keep the layer sorted by anchor
+                currentData[layer].sort((a, b) => a.anchor - b.anchor);
+                
+                updateSunburst();
+            }
+        }
     });
 
     btnAdd.addEventListener('click', () => openEditor(null));
