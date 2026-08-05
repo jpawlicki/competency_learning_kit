@@ -109,9 +109,9 @@ export function initSetupReports(AppState, storage) {
             currentTemplateId = null;
             titleEl.textContent = 'New Template';
             inputName.value = '';
-            inputInner.value = 50;
-            inputOuter.value = 250;
-            inputLevels.value = 3;
+            inputInner.value = 100;
+            inputOuter.value = 500;
+            inputLevels.value = 4;
             currentData = [];
         }
 
@@ -247,9 +247,9 @@ export function initSetupReports(AppState, storage) {
     }
 
     function updateSunburst() {
-        const levels = parseInt(inputLevels.value, 10) || 3;
-        const inner = parseFloat(inputInner.value) || 50;
-        const outer = parseFloat(inputOuter.value) || 250;
+        const levels = parseInt(inputLevels.value, 10) || 4;
+        const inner = parseFloat(inputInner.value) || 100;
+        const outer = parseFloat(inputOuter.value) || 500;
         const enriched = enrichData(currentData);
         sunburstEl.setConfig(levels, inner, outer, enriched);
     }
