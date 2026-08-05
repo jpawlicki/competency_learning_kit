@@ -624,7 +624,8 @@ export class StorageGoogleDrive extends Storage {
       'Google Classroom': [],
       'Competency': [],
       'Competency Group': [],
-      'Learner Group': []
+      'Learner Group': [],
+      'Radial Report Template': []
     };
 
     rows.forEach(row => {
@@ -658,13 +659,12 @@ export class StorageGoogleDrive extends Storage {
         rootDict['Competency'].push({
           id: row[1] || '',
           name: row[2] || '',
-          foundationalIds: row[3] ? row[3].split(';').filter(Boolean) : [],
-          relatedIds: row[4] ? row[4].split(';').filter(Boolean) : [],
-          state: row[5] || 'ACTIVE',
-          rank: parseFloat(row[6]) || 0,
-          description: row[7] || '',
-          rubric: row[8] || '',
-          color: row[9] || '#94a3b8'
+          relatedIds: row[3] ? row[3].split(';').filter(Boolean) : [],
+          state: row[4] || 'ACTIVE',
+          rank: parseFloat(row[5]) || 0,
+          description: row[6] || '',
+          rubric: row[7] || '',
+          color: row[8] || '#94a3b8'
         });
       } else if (type === 'Competency Group') {
         rootDict['Competency Group'].push({
@@ -678,6 +678,14 @@ export class StorageGoogleDrive extends Storage {
           id: row[1] || '',
           name: row[2] || '',
           description: row[3] || ''
+        });
+      } else if (type === 'Radial Report Template') {
+        rootDict['Radial Report Template'].push({
+          id: row[1] || '',
+          name: row[2] || '',
+          config: row[3] || '',
+          innerRadius: parseFloat(row[4]) || 50,
+          outerRadius: parseFloat(row[5]) || 250
         });
       }
     });
@@ -948,7 +956,6 @@ export class StorageGoogleDrive extends Storage {
       'Competency',
       c.id,
       c.name,
-      (c.foundationalIds || []).join(';'),
       (c.relatedIds || []).join(';'),
       c.state || 'ACTIVE',
       c.rank !== undefined ? c.rank.toString() : '0',
@@ -974,15 +981,41 @@ export class StorageGoogleDrive extends Storage {
     });
   }
 
+  async saveReportTemplates(templates) {
+    const components = await this.resolveProjectComponents();
+    if (!components || !components.rootDataId) throw new Error("Root Data spreadsheet not found.");
+
+    const data = await this.sheetsRequest(components.rootDataId, '/values/A:Z');
+    const existingRows = data.values || [];
+    
+    // Keep everything that is NOT a Radial Report Template
+    const filteredRows = existingRows.filter(row => row[0] !== 'Radial Report Template');
+
+    const templateRows = templates.map(t => [
+      'Radial Report Template',
+      t.id,
+      t.name,
+      t.config || '',
+      t.innerRadius?.toString() || '50',
+      t.outerRadius?.toString() || '250'
+    ]);
+
+    const newRows = [...filteredRows, ...templateRows];
+
+    await this.sheetsRequest(components.rootDataId, '/values/A:Z:clear', { method: 'POST' });
+    await this.sheetsRequest(components.rootDataId, '/values/A1?valueInputOption=USER_ENTERED', {
+      method: 'PUT',
+      body: JSON.stringify({ values: newRows })
+    });
+  }
+
   async addCompetency(competency = {}) {
     const components = await this.resolveProjectComponents();
     if (!components || !components.rootDataId) throw new Error("Root Data spreadsheet not found.");
 
     const id = competency.id || `comp_${Date.now()}`;
     const name = competency.name || 'New Competency';
-    const foundationalIdsList = competency.foundationalIds || [];
     const relatedIdsList = competency.relatedIds || [];
-    const foundationalIds = foundationalIdsList.join(';');
     const relatedIds = relatedIdsList.join(';');
     const state = competency.state || 'ACTIVE';
     const rank = competency.rank !== undefined ? competency.rank.toString() : '0';
@@ -994,7 +1027,6 @@ export class StorageGoogleDrive extends Storage {
       'Competency',
       id,
       name,
-      foundationalIds,
       relatedIds,
       state,
       rank,
@@ -1011,7 +1043,6 @@ export class StorageGoogleDrive extends Storage {
     return {
       id,
       name,
-      foundationalIds: foundationalIdsList,
       relatedIds: relatedIdsList,
       state,
       rank: parseFloat(rank),

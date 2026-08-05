@@ -52,86 +52,47 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         obsModal.style.display = 'none'; // Ensure it's hidden
     });
 
-    function renderLearnerList() {
-        learnerListEl.innerHTML = '';
-        const learners = AppState.rootData?.Student || [];
+    // Listen for custom element changes
+    learnerListEl.addEventListener('change', (e) => {
+        const newSelected = new Set(e.detail.selectedIds);
         
-        if (learners.length === 0) {
-            learnerListEl.innerHTML = '<div class="placeholder-text">No learners found.</div>';
-            return;
-        }
-
-        const selectAllDiv = document.createElement('div');
-        selectAllDiv.style.display = 'flex';
-        selectAllDiv.style.alignItems = 'center';
-        selectAllDiv.style.gap = '8px';
-        selectAllDiv.style.paddingBottom = '8px';
-        selectAllDiv.style.borderBottom = '1px solid var(--border)';
-        selectAllDiv.style.marginBottom = '8px';
-        
-        const selectAllCb = document.createElement('input');
-        selectAllCb.type = 'checkbox';
-        selectAllCb.id = 'assess_select_all';
-        
-        const selectAllLabel = document.createElement('label');
-        selectAllLabel.htmlFor = 'assess_select_all';
-        selectAllLabel.textContent = 'Select All';
-        selectAllLabel.style.fontWeight = '600';
-        
-        selectAllCb.addEventListener('change', (e) => {
-            const checked = e.target.checked;
-            learnerListEl.querySelectorAll('input[type="checkbox"]:not(#assess_select_all)').forEach(cb => {
-                cb.checked = checked;
-            });
-            if (checked) {
-                learners.forEach(s => selectedLearnerIds.add(s.learnerDataId));
-            } else {
-                selectedLearnerIds.clear();
+        // Additions
+        for (const id of newSelected) {
+            if (!selectedLearnerIds.has(id)) {
+                selectedLearnerIds.add(id);
+                addLearnerToGrid(id);
             }
-            renderAssessmentGrid();
-        });
+        }
         
-        selectAllDiv.appendChild(selectAllCb);
-        selectAllDiv.appendChild(selectAllLabel);
-        learnerListEl.appendChild(selectAllDiv);
+        // Removals
+        for (const id of selectedLearnerIds) {
+            if (!newSelected.has(id)) {
+                selectedLearnerIds.delete(id);
+                removeLearnerFromGrid(id);
+            }
+        }
+    });
 
-        learners.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => {
-            const div = document.createElement('div');
-            div.style.display = 'flex';
-            div.style.alignItems = 'center';
-            div.style.gap = '8px';
-            
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.id = `assess_learner_${s.learnerDataId}`;
-            cb.value = s.learnerDataId;
-            cb.checked = selectedLearnerIds.has(s.learnerDataId);
-            
-            const label = document.createElement('label');
-            label.htmlFor = cb.id;
-            label.textContent = s.displayName || s.name;
-            label.style.cursor = 'pointer';
-            
-            cb.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    selectedLearnerIds.add(s.learnerDataId);
-                    addLearnerToGrid(s.learnerDataId);
-                } else {
-                    selectedLearnerIds.delete(s.learnerDataId);
-                    removeLearnerFromGrid(s.learnerDataId);
-                }
-                
-                const allChecked = Array.from(learnerListEl.querySelectorAll('input[type="checkbox"]:not(#assess_select_all)'))
-                    .every(c => c.checked);
-                selectAllCb.checked = allChecked;
-            });
-            
-            div.appendChild(cb);
-            div.appendChild(label);
-            learnerListEl.appendChild(div);
-        });
+    function renderLearnerList() {
+        const learners = AppState.rootData?.Student || [];
+        const groups = AppState.rootData?.['Learner Group'] || [];
+        learnerListEl.setLearners(learners, groups);
         
-        renderAssessmentGrid();
+        // The element retains its selected states internally across re-renders if valid,
+        // but we should sync our local Set with its state.
+        const currentSelected = new Set(learnerListEl.getSelectedLearners());
+        let needsReRender = false;
+        
+        for (const id of selectedLearnerIds) {
+            if (!currentSelected.has(id)) {
+                selectedLearnerIds.delete(id);
+                needsReRender = true;
+            }
+        }
+        
+        if (needsReRender) {
+            renderAssessmentGrid();
+        }
     }
 
     function getFilteredComps() {

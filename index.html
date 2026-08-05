@@ -90,9 +90,9 @@
                     <div>
                         <div class="field-group" style="margin-bottom: 16px;">
                             <label class="form-label">2. Select Learners</label>
-                            <div id="evidence_learner_list" class="scrollable-panel flex-col gap-sm">
+                            <learner-selector id="evidence_learner_list" class="scrollable-panel flex-col gap-sm">
                                 <div class="placeholder-text" style="font-size: 0.9rem;">Loading learners...</div>
-                            </div>
+                            </learner-selector>
                         </div>
                     </div>
 
@@ -165,9 +165,9 @@
                 <!-- Left Sidebar: Learner Multi-select -->
                 <div class="field-group">
                     <label class="form-label">1. Select Learners</label>
-                    <div id="assess_learner_list" class="scrollable-panel flex-col gap-sm" style="max-height: calc(100vh - 250px);">
-                        <div class="placeholder-text" style="font-size: 0.9rem;">Loading learners...</div>
-                    </div>
+                    <learner-selector id="assess_learner_list" class="scrollable-panel flex-col gap-sm" style="max-height: calc(100vh - 250px);">
+                        <div class="placeholder-text">Loading learners...</div>
+                    </learner-selector>
                 </div>
 
                 <!-- Main Area: The Assessment Grid -->
@@ -213,6 +213,7 @@
             <div class="tabs">
                 <button class="tab-btn active" data-admin-tab="students">Learners</button>
                 <button class="tab-btn" data-admin-tab="competencies">Competency Architecture</button>
+                <button class="tab-btn" data-admin-tab="reports">Report Templates</button>
             </div>
             
             <!-- Students Tab -->
@@ -362,11 +363,7 @@
                                 <small style="color: var(--text-muted);">Hold Ctrl/Cmd to select multiple</small>
                             </div>
 
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="comp_foundational">Foundational Links (Prerequisites)</label>
-                                <select id="comp_foundational" multiple style="height: 100px;"></select>
-                                <small style="color: var(--text-muted);">Hold Ctrl/Cmd to select multiple</small>
-                            </div>
+
                             
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label for="comp_related">Related Links (Continuing/Similar)</label>
@@ -380,6 +377,73 @@
                             </div>
                         </div>
 
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Templates Tab -->
+            <div id="admin-tab-reports" class="admin-tab-content hidden">
+                <div class="two-column-layout">
+                    <!-- Left: Report Templates List -->
+                    <div class="card" class="flex-col gap-md">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0;">Templates</h3>
+                            <button id="add_report_template_btn" class="btn-primary" style="padding: 0.25rem 0.5rem; width: auto; font-size: 0.8rem;">+ Template</button>
+                        </div>
+                        <ul id="report_templates_list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem;">
+                            <li class="placeholder-text">Loading...</li>
+                        </ul>
+                    </div>
+
+                    <!-- Right: Editor -->
+                    <div class="card" style="display: flex; flex-direction: column; gap: 1rem; min-height: 400px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 id="report_template_title" style="margin: 0;">Select a Template</h3>
+                        </div>
+
+                        <div id="report_template_editor" class="hidden" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div style="display: flex; gap: 1rem;">
+                                <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                                    <label for="rt_name">Template Name</label>
+                                    <input type="text" id="rt_name" placeholder="e.g. End of Year Report">
+                                </div>
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label for="rt_levels">Levels</label>
+                                    <input type="number" id="rt_levels" min="1" max="10" value="3">
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; gap: 1rem;">
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label for="rt_inner_radius">Inner Radius</label>
+                                    <input type="number" id="rt_inner_radius" min="0" max="500" value="50">
+                                </div>
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label for="rt_outer_radius">Outer Radius</label>
+                                    <input type="number" id="rt_outer_radius" min="10" max="1000" value="250">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem;">
+                                <!-- Competencies Selector -->
+                                <div style="flex: 1; border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; max-height: 400px; overflow-y: auto;">
+                                    <h4 style="margin-top: 0;">Competencies</h4>
+                                    <div id="rt_competency_selector" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                        <!-- populated dynamically -->
+                                    </div>
+                                </div>
+                                
+                                <!-- Sunburst Preview Area -->
+                                <div style="flex: 2; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border); border-radius: 4px; min-height: 400px; overflow: hidden; background: #fafafa;">
+                                    <clk-sunburst id="rt_sunburst_preview"></clk-sunburst>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 0.5rem;">
+                                <button id="cancel_rt_btn" class="btn-login" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); width: auto;">Cancel</button>
+                                <button id="save_rt_btn" class="btn-primary" style="width: auto;">Save Template</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -430,6 +494,8 @@
     <script async defer src="https://accounts.google.com/gsi/client" onload="window.gisLoaded && window.gisLoaded()"></script>
     <script type="module" src="js/components/login_state.js"></script>
     <script type="module" src="js/components/setup_wizard.js"></script>
+    <script type="module" src="js/components/learner_selector.js"></script>
+    <script type="module" src="js/components/sunburst.js"></script>
     <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -109,18 +109,27 @@ document is the source of truth. Recognized types and subsequent columns are:
     Artifacts folder, the current display name of the student (allowing for
     nicknaming), the student's Google Classroom ID (if any).
   - `Google Classroom`: The ID of a Google Classroom linked with this system.
-  - `Competency`: A unique ID, the name of the competency, a semicolon-separated
-    list of foundational competencies, a semicolon-separated list of related
-    competencies, the competency's state ("RETIRED" or "ACTIVE"), a numeric
-    rank for the competency (used when ordering a list of competencies in UI
-    elements), a long-form description of the competency, rubric text for what
-    meeting the competency means, a color for the competency (as a #-prefixed
-    6-digit hexadecimal code).
+  - `Competency`: A unique ID, the name of the competency, a
+    semicolon-separated list of related competencies, the competency's state
+    ("RETIRED" or "ACTIVE"), a numeric rank for the competency (used when
+    ordering a list of competencies in UI elements), a long-form description of
+    the competency, rubric text for what meeting the competency means, a color
+    for the competency (as a #-prefixed 6-digit hexadecimal code).
   - `Competency Group`: A unique ID, the name of the competency group, a
     semicolon-separated list of competencies, a long-form description of the
     competency group.
   - `Learner Group`: A unique ID, the name of a learner group, a long-form
     description of the competency group.
+  - `Radial Report Template`: A unique ID, the name of the report template, a
+    semicolon-separated list of colon-separated lists of number-sign-separated
+    unique-ID#anchor pairs where the unique ID is a competency's ID. The
+    outermost list defines the layers of a sunburst diagram, while the inner
+    list defines the elements in that layer in clockwise order starting from
+    north. The anchors in the first (innermost) layer of the ring are 0 and are
+    ignored. The anchors in each subsequent layer refer to an index into the
+    inner list of the previous layer of the ring, and indicate that this
+    competency should be rendered in a subslice of that competency. The next
+    columns are the inner and outer radii of the annulus.
 
 ### The Learner Data Spreadsheet
 
@@ -146,11 +155,18 @@ the types are different:
     user who entered the observation, the competency rating (0.0 to 1.0), the
     timestamp of entry, the visibility of the observation (PRIVATE,
     INSTITUTION, ALL).
-  - `Assessment`: A unique ID, a competency ID, the e-mail address of the
-    assessor, the rating (0.0 to 1.0, with 0 interpreted as "not yet
-    demonstrates" and 1.0 as "consistently demonstrates" and values between
-    interpreted as "sometimes demonstrates"), a summative note, helpful
+  - `Assessment`: A unique ID, an assessment group ID, a competency ID, the
+    e-mail address of the assessor, the rating (0.0 to 1.0, with 0 interpreted
+    as "not yet demonstrates" and 1.0 as "consistently demonstrates" and values
+    between interpreted as "sometimes demonstrates"), a summative note, helpful
     guidance, a timestamp of entry.
+
+#### Additional Details
+
+Assessments carry a single assessment group ID. This is used when multiple assessments
+(e.g. from multiple educators) should logically be reported as a single assessment with
+multiple voices. If the assessments have divergent ratings, the overall assessment is
+reported as the average of the ratings.
 
 ## Development Topics
 

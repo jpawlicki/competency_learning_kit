@@ -2,6 +2,7 @@ import { createStorageGoogleDrive, createUIPrefsBrowserStorage } from './data.js
 import { createGoogleClassroom } from './google_classroom.js';
 import { initEvidenceBatchUI } from './evidence_batch.js';
 import { initAssessmentsView } from './assessments.js';
+import { initSetupReports } from './setup_reports.js';
 
 const CLIENT_ID = '767614918217-040505l01huso2e5f42bavj5magf27p8.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.rosters.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.coursework.me';
@@ -158,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             AppState.load().then(() => {
                 initEvidenceBatchUI(AppState, storage, classroom, uiPrefs);
                 initAssessmentsView(AppState, uiPrefs, storage);
+                initSetupReports(AppState, storage);
                 const activeAdminTab = document.querySelector('.tab-btn[data-admin-tab="students"]');
                 if (activeAdminTab && activeAdminTab.classList.contains('active') && !document.getElementById('view-admin').classList.contains('hidden')) {
                     loadStudents();
@@ -245,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 AppState.load().then(() => {
                     initEvidenceBatchUI(AppState, storage, classroom, uiPrefs);
                     initAssessmentsView(AppState, uiPrefs, storage);
+                    initSetupReports(AppState, storage);
                     // If we are currently on the Admin -> Students tab, load the data
                     const activeAdminTab = document.querySelector('.tab-btn[data-admin-tab="students"]');
                     if (activeAdminTab && activeAdminTab.classList.contains('active') && !document.getElementById('view-admin').classList.contains('hidden')) {
@@ -832,7 +835,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const compDescInput = document.getElementById('comp_desc');
     const compColorInput = document.getElementById('comp_color');
     const compGroupsSelect = document.getElementById('comp_groups');
-    const compFoundationalSelect = document.getElementById('comp_foundational');
     const compRelatedSelect = document.getElementById('comp_related');
     const compFormTitle = document.getElementById('comp_form_title');
 
@@ -947,10 +949,8 @@ document.addEventListener('DOMContentLoaded', () => {
             infoDiv.innerHTML = `<strong style="${c.state === 'RETIRED' ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${c.name}</strong><br><span style="font-size: 0.8rem; color: var(--text-muted);">${c.description || ''}</span>`;
             
             const editBtn = document.createElement('button');
-            editBtn.textContent = 'Edit';
-            editBtn.className = 'btn-login btn-sm';
-            editBtn.style.background = 'none';
-            editBtn.style.border = '1px solid var(--border)';
+            editBtn.className = 'material-symbols-outlined btn-icon';
+            editBtn.textContent = 'edit';
             editBtn.onclick = () => openCompForm(c);
             
             li.appendChild(infoDiv);
@@ -1026,7 +1026,6 @@ document.addEventListener('DOMContentLoaded', () => {
         compEditForm.classList.remove('hidden');
         compListContainer.classList.add('hidden');
         
-        populateMultiSelect(compFoundationalSelect, archCompetencies.filter(c => !comp || c.id !== comp.id), comp ? comp.foundationalIds : []);
         populateMultiSelect(compRelatedSelect, archCompetencies.filter(c => !comp || c.id !== comp.id), comp ? comp.relatedIds : []);
         
         const myGroups = comp ? archGroups.filter(g => g.competencyIds.includes(comp.id)).map(g => g.id) : (selectedGroupId && selectedGroupId !== 'ALL' ? [selectedGroupId] : []);
@@ -1056,7 +1055,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = compNameInput.value.trim();
         if (!name) return alert('Name is required');
         
-        const foundationalIds = Array.from(compFoundationalSelect.selectedOptions).map(o => o.value);
         const relatedIds = Array.from(compRelatedSelect.selectedOptions).map(o => o.value);
         const selectedGroups = Array.from(compGroupsSelect.selectedOptions).map(o => o.value);
         
@@ -1065,7 +1063,6 @@ document.addEventListener('DOMContentLoaded', () => {
             existing.name = name;
             existing.description = compDescInput.value;
             existing.color = compColorInput.value;
-            existing.foundationalIds = foundationalIds;
             existing.relatedIds = relatedIds;
         } else {
             archCompetencies.push({
@@ -1073,7 +1070,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 name,
                 description: compDescInput.value,
                 color: compColorInput.value,
-                foundationalIds,
                 relatedIds,
                 state: 'ACTIVE',
                 rank: 0,

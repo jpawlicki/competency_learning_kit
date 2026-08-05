@@ -98,74 +98,16 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
         renderGoalSelectors();
     });
 
+    // Listen for custom element changes
+    learnerListEl.addEventListener('change', (e) => {
+        selectedLearnerIds = new Set(e.detail.selectedIds);
+        rebuildTable();
+    });
+
     function renderLearners() {
-        learnerListEl.innerHTML = '';
         const learners = AppState.rootData?.Student || [];
-        
-        // Add "Select All"
-        const selectAllDiv = document.createElement('div');
-        selectAllDiv.style.display = 'flex';
-        selectAllDiv.style.alignItems = 'center';
-        selectAllDiv.style.gap = '8px';
-        selectAllDiv.style.paddingBottom = '8px';
-        selectAllDiv.style.borderBottom = '1px solid var(--border)';
-        selectAllDiv.style.marginBottom = '8px';
-        
-        const selectAllCb = document.createElement('input');
-        selectAllCb.type = 'checkbox';
-        selectAllCb.id = 'evidence_select_all_learners';
-        selectAllCb.checked = selectedLearnerIds.size > 0 && selectedLearnerIds.size === learners.length;
-        selectAllCb.onchange = (e) => {
-            if (e.target.checked) {
-                learners.forEach(s => selectedLearnerIds.add(s.learnerDataId));
-            } else {
-                selectedLearnerIds.clear();
-            }
-            renderLearners(); // Re-render to update checkboxes
-            rebuildTable();
-        };
-        
-        const selectAllLabel = document.createElement('label');
-        selectAllLabel.htmlFor = 'evidence_select_all_learners';
-        selectAllLabel.textContent = 'Select All Learners';
-        selectAllLabel.style.fontWeight = '600';
-        selectAllLabel.style.cursor = 'pointer';
-        
-        selectAllDiv.appendChild(selectAllCb);
-        selectAllDiv.appendChild(selectAllLabel);
-        learnerListEl.appendChild(selectAllDiv);
-        
-        learners.forEach(s => {
-            const div = document.createElement('div');
-            div.style.display = 'flex';
-            div.style.alignItems = 'center';
-            div.style.gap = '8px';
-            
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.id = `evidence_learner_${s.learnerDataId}`;
-            cb.value = s.learnerDataId;
-            cb.checked = selectedLearnerIds.has(s.learnerDataId);
-            
-            cb.onchange = (e) => {
-                if (e.target.checked) selectedLearnerIds.add(s.learnerDataId);
-                else selectedLearnerIds.delete(s.learnerDataId);
-                rebuildTable();
-                
-                // Update select all checkbox state
-                const allChecked = selectedLearnerIds.size === learners.length;
-                document.getElementById('evidence_select_all_learners').checked = allChecked;
-            };
-            
-            const lbl = document.createElement('label');
-            lbl.htmlFor = cb.id;
-            lbl.textContent = s.displayName || s.name;
-            lbl.style.cursor = 'pointer';
-            
-            div.appendChild(cb);
-            div.appendChild(lbl);
-            learnerListEl.appendChild(div);
-        });
+        const groups = AppState.rootData?.['Learner Group'] || [];
+        learnerListEl.setLearners(learners, groups);
         document.getElementById('evidence_form').classList.remove('hidden');
     }
 
@@ -489,6 +431,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             nameInput.value = '';
             noteInput.value = '';
             fileInput.value = '';
+            learnerListEl.clearSelection();
             selectedLearnerIds.clear();
             selectedGoalIds.clear();
             ratings = {};
