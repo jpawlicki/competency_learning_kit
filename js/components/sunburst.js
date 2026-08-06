@@ -10,6 +10,7 @@ export class CLKSunburst extends HTMLElement {
         // config is an array of arrays of { id, anchor, color, name }
         // e.g. [ [{id:'c1', anchor:0}, {id:'c2', anchor:0}], [{id:'c3', anchor:0}] ]
         this.data = []; 
+        this.mode = 'edit';
         
         this.draggedItem = null; // { id, color, name }
 
@@ -39,14 +40,13 @@ export class CLKSunburst extends HTMLElement {
                     font-family: 'Inter', sans-serif;
                     font-size: 10px;
                     font-weight: 500;
-                    fill: white;
                     pointer-events: none;
                     text-anchor: middle;
                     dominant-baseline: middle;
                 }
                 .placeholder-ring {
-                    fill: rgba(0,0,0,0.03);
-                    stroke: #ddd;
+                    fill: rgba(0,0,0,0.015);
+                    stroke: #eee;
                     stroke-width: 1px;
                     stroke-dasharray: 4;
                 }
@@ -89,6 +89,11 @@ export class CLKSunburst extends HTMLElement {
         window.removeEventListener('mouseup', this.handleWindowMouseUp);
     }
 
+    setMode(mode) {
+        this.mode = mode;
+        this.render();
+    }
+
     setConfig(levels, innerRadius, outerRadius, data) {
         this.levels = levels;
         this.innerRadius = innerRadius;
@@ -121,7 +126,7 @@ export class CLKSunburst extends HTMLElement {
         const g = parseInt(hexColor.substr(2, 2), 16) || 0;
         const b = parseInt(hexColor.substr(4, 2), 16) || 0;
         const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-        return (yiq >= 128) ? '#000000' : '#ffffff';
+        return (yiq >= 80) ? '#000000' : '#ffffff';
     }
 
     // Generate SVG path 'd' attribute for an annular sector
@@ -318,64 +323,142 @@ export class CLKSunburst extends HTMLElement {
 
                 for (let j = 0; j < layers[i].length; j++) {
                     const node = layers[i][j];
-                    const path = document.createElementNS(this.svgNS, 'path');
-                    path.setAttribute('class', 'arc');
-                    path.setAttribute('d', this.describeArc(cx, cy, currentInner, currentOuter, node.startTheta, node.endTheta));
-                    path.setAttribute('fill', node.originalData.color || '#94a3b8');
-                    
-                    path.style.cursor = 'grab';
-                    path.addEventListener('mousedown', (e) => {
-                        e.preventDefault();
-                        this.selectedItemId = node.originalData.id;
-                        this.customDragItem = { id: node.originalData.id, name: node.originalData.name, color: node.originalData.color };
-                        this.setDraggedItem(this.customDragItem);
-                        this.dragStartX = e.clientX;
-                        this.dragStartY = e.clientY;
-                        path.style.opacity = '0.5';
-                        e.stopPropagation();
-                        this.render(); // Redraw with selection
-                    });
+                    if (this.mode === 'report') {
+                        const score = node.originalData.score;
+                        if (score === undefined || score === null) {
+                            continue; // "Not Assessed" -> render nothing
+                        }
 
-                    // Add Title for hover tooltip
-                    const title = document.createElementNS(this.svgNS, 'title');
-                    title.textContent = node.originalData.name;
-                    path.appendChild(title);
-                    
-                    this.svg.appendChild(path);
+                        // Draw 5% background arc
+                        const bgPath = document.createElementNS(this.svgNS, 'path');
+                        bgPath.setAttribute('class', 'arc');
+                        bgPath.setAttribute('d', this.describeArc(cx, cy, currentInner, currentOuter, node.startTheta, node.endTheta));
+                        bgPath.setAttribute('fill', node.originalData.color || '#94a3b8');
+                        bgPath.style.fillOpacity = '0.05';
+                        this.svg.appendChild(bgPath);
+
+                        // Draw progress arc if score > 0
+                        if (score > 0) {
+                            const progressOuter = currentInner + (currentOuter - currentInner) * score;
+                            const path = document.createElementNS(this.svgNS, 'path');
+                            path.setAttribute('class', 'arc');
+                            path.setAttribute('d', this.describeArc(cx, cy, currentInner, progressOuter, node.startTheta, node.endTheta));
+                            path.setAttribute('fill', node.originalData.color || '#94a3b8');
+                            
+                            const title = document.createElementNS(this.svgNS, 'title');
+                            title.textContent = `${node.originalData.name} (${Math.round(score * 100)}%)`;
+                            path.appendChild(title);
+                            
+                            this.svg.appendChild(path);
+                        }
+                    } else {
+                        const path = document.createElementNS(this.svgNS, 'path');
+                        path.setAttribute('class', 'arc');
+                        path.setAttribute('d', this.describeArc(cx, cy, currentInner, currentOuter, node.startTheta, node.endTheta));
+                        path.setAttribute('fill', node.originalData.color || '#94a3b8');
+                        
+                        path.style.cursor = 'grab';
+                        path.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            this.selectedItemId = node.originalData.id;
+                            this.customDragItem = { id: node.originalData.id, name: node.originalData.name, color: node.originalData.color };
+                            this.setDraggedItem(this.customDragItem);
+                            this.dragStartX = e.clientX;
+                            this.dragStartY = e.clientY;
+                            path.style.opacity = '0.5';
+                            e.stopPropagation();
+                            this.render(); // Redraw with selection
+                        });
+
+                        // Add Title for hover tooltip
+                        const title = document.createElementNS(this.svgNS, 'title');
+                        title.textContent = node.originalData.name;
+                        path.appendChild(title);
+                        
+                        this.svg.appendChild(path);
+                    }
 
                     // Add text label if the arc is wide enough
                     const arcAngle = node.endTheta - node.startTheta;
                     if (arcAngle > 0.1) {
                         const midTheta = (node.startTheta + node.endTheta) / 2;
                         const midRadius = (currentInner + currentOuter) / 2;
-                        const textPos = this.polarToCartesian(cx, cy, midRadius, midTheta);
                         
-                        const text = document.createElementNS(this.svgNS, 'text');
-                        text.setAttribute('class', 'arc-label');
-                        text.setAttribute('x', textPos.x);
-                        text.setAttribute('y', textPos.y);
-                        
-                        // Rotate text to match arc
-                        let rotateAngle = (midTheta * 180 / Math.PI) - 90;
-                        if (rotateAngle > 90 || rotateAngle < -90) {
-                            rotateAngle += 180;
-                        }
-                        text.setAttribute('transform', `rotate(${rotateAngle}, ${textPos.x}, ${textPos.y})`);
+                        const arcLength = arcAngle * midRadius;
                         
                         let shortName = node.originalData.name;
-                        if (shortName.length > 15) shortName = shortName.substring(0, 12) + '...';
-                        text.textContent = shortName;
-                        
+                        if (shortName.length > 18) shortName = shortName.substring(0, 15) + '...';
+
                         const bgColor = node.originalData.color || '#94a3b8';
-                        text.setAttribute('fill', this.getContrastColor(bgColor));
-                        
-                        this.svg.appendChild(text);
+                        const textColor = this.getContrastColor(bgColor);
+
+                        const text = document.createElementNS(this.svgNS, 'text');
+                        text.setAttribute('class', 'arc-label');
+                        text.setAttribute('fill', textColor);
+
+                        if (arcLength > layerWidth) {
+                            // Draw curved text along the arcline
+                            const pathId = `textpath_${node.layerIndex}_${node.itemIndex}_${Math.random().toString(36).substr(2, 9)}`;
+                            
+                            let start = node.startTheta;
+                            let end = node.endTheta;
+                            let sweepFlag = 1;
+
+                            // If text would be upside down, draw path in reverse
+                            let isUpsideDown = (midTheta > Math.PI / 2 && midTheta < 3 * Math.PI / 2);
+                            if (isUpsideDown) {
+                                start = node.endTheta;
+                                end = node.startTheta;
+                                sweepFlag = 0;
+                            }
+
+                            const pStart = this.polarToCartesian(cx, cy, midRadius, start);
+                            const pEnd = this.polarToCartesian(cx, cy, midRadius, end);
+                            const largeArcFlag = arcAngle <= Math.PI ? "0" : "1";
+
+                            const pathData = `M ${pStart.x} ${pStart.y} A ${midRadius} ${midRadius} 0 ${largeArcFlag} ${sweepFlag} ${pEnd.x} ${pEnd.y}`;
+
+                            let defs = this.svg.querySelector('defs');
+                            if (!defs) {
+                                defs = document.createElementNS(this.svgNS, 'defs');
+                                this.svg.appendChild(defs);
+                            }
+
+                            const path = document.createElementNS(this.svgNS, 'path');
+                            path.setAttribute('id', pathId);
+                            path.setAttribute('d', pathData);
+                            defs.appendChild(path);
+
+                            const textPath = document.createElementNS(this.svgNS, 'textPath');
+                            textPath.setAttribute('href', `#${pathId}`);
+                            textPath.setAttribute('startOffset', '50%');
+                            textPath.textContent = shortName;
+
+                            text.appendChild(textPath);
+                            this.svg.appendChild(text);
+                        } else {
+                            const textPos = this.polarToCartesian(cx, cy, midRadius, midTheta);
+                            text.setAttribute('x', textPos.x);
+                            text.setAttribute('y', textPos.y);
+                            
+                            // Rotate text to match arc
+                            let rotateAngle = (midTheta * 180 / Math.PI) - 90;
+                            if (rotateAngle > 90 || rotateAngle < -90) {
+                                rotateAngle += 180;
+                            }
+                            text.setAttribute('transform', `rotate(${rotateAngle}, ${textPos.x}, ${textPos.y})`);
+                            text.textContent = shortName;
+                            
+                            this.svg.appendChild(text);
+                        }
                     }
                 }
             }
         }
 
-        this.updateSelection();
+        if (this.mode !== 'report') {
+            this.updateSelection();
+        }
     }
 
     drawHandle(cx, cy, radius, theta, node, type) {
@@ -504,6 +587,7 @@ export class CLKSunburst extends HTMLElement {
     }
 
     handleDragOver(e) {
+        if (this.mode === 'report') return;
         e.preventDefault(); // Necessary to allow dropping
         if (!this.draggedItem) return;
 
@@ -517,11 +601,13 @@ export class CLKSunburst extends HTMLElement {
     }
 
     handleDragLeave(e) {
+        if (this.mode === 'report') return;
         this.isDragging = false;
         this.updateDragIndicator();
     }
 
     handleDrop(e) {
+        if (this.mode === 'report') return;
         e.preventDefault();
         this.isDragging = false;
         this.updateDragIndicator();
@@ -537,6 +623,7 @@ export class CLKSunburst extends HTMLElement {
     }
 
     handleWindowMouseMove(e) {
+        if (this.mode === 'report') return;
         if (this.isDraggingHandle) {
             const polar = this.getPolarFromMouse(e);
             if (polar) {
@@ -564,6 +651,7 @@ export class CLKSunburst extends HTMLElement {
     }
 
     handleWindowMouseUp(e) {
+        if (this.mode === 'report') return;
         if (this.isDraggingHandle) {
             this.isDraggingHandle = null;
             return;

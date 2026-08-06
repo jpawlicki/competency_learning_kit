@@ -40,14 +40,6 @@
                 <span class="material-symbols-outlined" style="animation: spin 1s linear infinite; font-size: 1.1rem;">sync</span>
                 Loading...
             </div>
-            <div class="filter-group">
-                <label for="competency-group-select" class="visually-hidden">Competency Group Filter</label>
-                <select id="competency-group-select" class="select-filter">
-                    <option value="all">All Competencies</option>
-                    <option value="grade-3">Grade 3 (Example)</option>
-                    <option value="grade-8">Grade 8 (Example)</option>
-                </select>
-            </div>
             <clk-login-state id="login-state"></clk-login-state>
         </div>
     </header>
@@ -99,28 +91,7 @@
                     <div id="evidence_form" class="hidden flex-col gap-xl">
                         <div class="field-group">
                             <label class="form-label">3. Select Competencies to Rate</label>
-                            
-                            <div id="evidence_assignment_goals_container" class="hidden" style="margin-bottom: 16px;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--brand); margin-bottom: 8px; text-transform: uppercase;">Suggested for this Assignment</div>
-                                <div id="evidence_assignment_goals_list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border: 1px solid var(--brand); border-radius: 6px; padding: 12px; background: var(--primary-bg); max-height: 150px; overflow-y: auto;">
-                                </div>
-                            </div>
-                            
-                            <div id="evidence_recent_goals_container" class="hidden" style="margin-bottom: 16px;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">Recent (Last Year)</div>
-                                <div id="evidence_recent_goals_list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: var(--primary-bg); max-height: 150px; overflow-y: auto;">
-                                </div>
-                            </div>
-                            
-                            <div id="evidence_filtered_goals_container" style="margin-bottom: 16px;">
-                                <div id="evidence_filtered_title" style="font-size: 0.75rem; font-weight: 700; color: var(--accent); margin-bottom: 8px; text-transform: uppercase;">Competencies in Selected Group</div>
-                                <div id="evidence_filtered_goals_list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: #f0fdf4; max-height: 150px; overflow-y: auto;">
-                                </div>
-                            </div>
-                            
-                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">All Competencies</div>
-                            <div id="evidence_goals_selector" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: var(--surface); max-height: 200px; overflow-y: auto;">
-                            </div>
+                            <competency-selector id="evidence_comp_list" style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: var(--surface); max-height: 400px; overflow-y: auto; display: block;"></competency-selector>
                         </div>
 
                         <div class="field-group">
@@ -172,8 +143,14 @@
 
                 <!-- Main Area: The Assessment Grid -->
                 <div class="field-group">
-                    <label class="form-label">2. Summative Assessments</label>
-                    <div id="assess_grid_container" class="flex-col gap-xl" style="padding-right: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label class="form-label" style="margin-bottom: 0;">2. Summative Assessments</label>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="assess_save_all" class="btn-primary floating-save-btn" style="display: none;">Save Changes</button>
+                            <competency-group-selector id="assess_group_select" style="width: auto;"></competency-group-selector>
+                        </div>
+                    </div>
+                    <div id="assess_grid_container" class="flex-col gap-xl" style="padding-right: 8px; padding-bottom: 120px;">
                         <div id="assess_initial_placeholder" class="placeholder-text card">Select learners from the left to begin.</div>
                     </div>
                 </div>
@@ -187,20 +164,39 @@
                     <h2>Reports</h2>
                     <p>Visualize learner progress.</p>
                 </div>
-                <div class="toggle-group">
-                    <label class="toggle">
-                        <input type="checkbox" id="toggle-observations">
-                        <span class="slider"></span>
-                        <span class="toggle-label">Show Observations</span>
-                    </label>
+            </div>
+            
+            <div class="two-column-layout">
+                <!-- Left Sidebar: Selectors -->
+                <div class="field-group" style="display: flex; flex-direction: column; gap: 16px;">
+                    <div class="field-group">
+                        <label class="form-label">1. Select Learners</label>
+                        <learner-selector id="report_learner_list" class="scrollable-panel flex-col gap-sm" style="max-height: 250px;">
+                            <div class="placeholder-text">Loading learners...</div>
+                        </learner-selector>
+                    </div>
+                    <div class="field-group" id="report_comp_group_container">
+                        <label class="form-label">2. Select Competency Group</label>
+                        <competency-group-selector id="report_comp_group_list"></competency-group-selector>
+                    </div>
+                    <div class="field-group hidden" id="report_template_container">
+                        <label class="form-label">2. Select Report Template</label>
+                        <select id="report_template_list" class="select-filter" style="width: 100%;">
+                            <option value="">Choose a template...</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
-            <div class="tabs">
-                <button class="tab-btn active" data-report="matrix">Class Matrix</button>
-                <button class="tab-btn" data-report="individual">Learner Report</button>
-            </div>
-            <div class="card report-container">
-                <p class="placeholder-text">Report data will appear here.</p>
+
+                <!-- Main Area: The Report -->
+                <div class="field-group" style="display: flex; flex-direction: column;">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-report="matrix">Class Matrix</button>
+                        <button class="tab-btn" data-report="individual">Learner Report</button>
+                    </div>
+                    <div class="card report-container" id="report_content_area" style="overflow-x: auto; flex: 1; min-height: 400px; padding: 16px;">
+                        <p class="placeholder-text">Select learners and competencies to view the report.</p>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -500,6 +496,8 @@
     <script type="module" src="js/components/login_state.js"></script>
     <script type="module" src="js/components/setup_wizard.js"></script>
     <script type="module" src="js/components/learner_selector.js"></script>
+    <script type="module" src="js/components/competency_selector.js"></script>
+    <script type="module" src="js/components/competency_group_selector.js"></script>
     <script type="module" src="js/components/sunburst.js"></script>
     <script type="module" src="js/app.js"></script>
 </body>

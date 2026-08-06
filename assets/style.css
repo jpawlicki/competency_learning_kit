@@ -246,6 +246,22 @@ h1, h2, h3 {
     background-color: var(--brand-hover);
 }
 
+.btn-rating {
+    flex: 1;
+    padding: 6px 4px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.btn-rating.selected {
+    color: #fff;
+}
+
 /* Utilities */
 .hidden {
     display: none !important;
@@ -572,3 +588,18 @@ input:checked + .slider:before {
     font-size: 0.9rem;
     cursor: pointer;
 }
+
+.floating-save-btn {
+    position: fixed;
+    width: max-content;
+    bottom: 32px;
+    right: 32px;
+    z-index: 9999;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    border-radius: 24px;
+    padding: 12px 24px;
+    font-size: 1.1rem;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+

@@ -3,6 +3,7 @@ import { createGoogleClassroom } from './google_classroom.js';
 import { initEvidenceBatchUI } from './evidence_batch.js';
 import { initAssessmentsView } from './assessments.js';
 import { initSetupReports } from './setup_reports.js';
+import { initReportsView } from './reports.js';
 
 const CLIENT_ID = '767614918217-040505l01huso2e5f42bavj5magf27p8.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.rosters.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.coursework.me';
@@ -50,23 +51,7 @@ const AppState = {
     }
 };
 
-function populateGlobalFilter(groups) {
-    const filterSelect = document.getElementById('competency-group-select');
-    if (!filterSelect) return;
-    const currentValue = filterSelect.value;
-    filterSelect.innerHTML = '<option value="all">All Competencies</option>';
-    
-    groups.forEach(g => {
-        const opt = document.createElement('option');
-        opt.value = g.id;
-        opt.textContent = g.name;
-        filterSelect.appendChild(opt);
-    });
-    
-    if (groups.some(g => g.id === currentValue) || currentValue === 'all') {
-        filterSelect.value = currentValue;
-    }
-}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Navigation Routing ---
@@ -160,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initEvidenceBatchUI(AppState, storage, classroom, uiPrefs);
                 initAssessmentsView(AppState, uiPrefs, storage);
                 initSetupReports(AppState, storage);
+                initReportsView(AppState, storage);
                 const activeAdminTab = document.querySelector('.tab-btn[data-admin-tab="students"]');
                 if (activeAdminTab && activeAdminTab.classList.contains('active') && !document.getElementById('view-admin').classList.contains('hidden')) {
                     loadStudents();
@@ -248,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     initEvidenceBatchUI(AppState, storage, classroom, uiPrefs);
                     initAssessmentsView(AppState, uiPrefs, storage);
                     initSetupReports(AppState, storage);
+                    initReportsView(AppState, storage);
                     // If we are currently on the Admin -> Students tab, load the data
                     const activeAdminTab = document.querySelector('.tab-btn[data-admin-tab="students"]');
                     if (activeAdminTab && activeAdminTab.classList.contains('active') && !document.getElementById('view-admin').classList.contains('hidden')) {
@@ -804,12 +791,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Competency Group Filter ---
-    const filterSelect = document.getElementById('competency-group-select');
-    filterSelect.addEventListener('change', (e) => {
-        const selectedGroup = e.target.value;
-        console.log('Competency Group changed to:', selectedGroup);
-    });
 
     // --- Admin: Competency Architecture ---
     let archGroups = [];

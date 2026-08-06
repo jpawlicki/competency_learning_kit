@@ -9,6 +9,59 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
     const obsModalTitle = document.getElementById('obs_modal_title');
     
     let selectedLearnerIds = new Set();
+    const unsavedAssessments = new Map();
+    const saveAllBtn = document.getElementById('assess_save_all');
+
+    function updateGlobalSaveBtn() {
+        if (!saveAllBtn) return;
+        if (unsavedAssessments.size > 0) {
+            saveAllBtn.style.display = 'inline-block';
+            saveAllBtn.textContent = `Save Changes (${unsavedAssessments.size})`;
+            saveAllBtn.className = 'btn-primary floating-save-btn';
+            saveAllBtn.disabled = false;
+        } else {
+            saveAllBtn.style.display = 'none';
+        }
+    }
+
+    if (saveAllBtn) {
+        saveAllBtn.addEventListener('click', async () => {
+            if (unsavedAssessments.size === 0) return;
+            saveAllBtn.disabled = true;
+            saveAllBtn.textContent = 'Saving...';
+            
+            let errors = 0;
+            for (const [key, assess] of unsavedAssessments.entries()) {
+                const learnerId = assess.learnerId;
+                delete assess.learnerId; // remove temp property
+                try {
+                    await storage.addAssessment(learnerId, assess);
+                } catch (e) {
+                    console.error(e);
+                    errors++;
+                }
+            }
+            if (errors > 0) {
+                alert("Saved with errors. Check console.");
+                saveAllBtn.disabled = false;
+                saveAllBtn.textContent = 'Retry Save';
+            } else {
+                unsavedAssessments.clear();
+                updateGlobalSaveBtn();
+                renderAssessmentGrid();
+                if(saveAllBtn) {
+                   saveAllBtn.className = 'btn-primary floating-save-btn success'; 
+                }
+            }
+        });
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+        if (unsavedAssessments.size > 0) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
     
     // Rating Config for Summative Assessments
     const summativeRatings = [
@@ -35,10 +88,30 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
     
     // Listen for auth/data load
     window.addEventListener('clk-data-loaded', () => {
+        renderAssessGroupSelect();
         if (viewAssessments.classList.contains('active')) {
             renderLearnerList();
         }
     });
+
+    const assessGroupSelect = document.getElementById('assess_group_select');
+    if (assessGroupSelect) {
+        assessGroupSelect.addEventListener('change', (e) => {
+            if (unsavedAssessments.size > 0) {
+                if (!confirm("You have unsaved changes. Change group and lose changes?")) {
+                    // Reverting group select is hard without state tracking, but let's just warn for now
+                    // If they cancel, we can try to re-render to the old group? 
+                    // To keep it simple, we just warn and if they say OK, we clear unsaved.
+                } else {
+                    unsavedAssessments.clear();
+                    updateGlobalSaveBtn();
+                    renderAssessmentGrid();
+                }
+                return;
+            }
+            renderAssessmentGrid();
+        });
+    }
 
     // Listen for global filter changes from app.js
     window.addEventListener('clk-filter-changed', () => {
@@ -47,6 +120,25 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         }
     });
 
+    function renderAssessGroupSelect() {
+        const groups = AppState.rootData?.['Competency Group'] || [];
+        if (!assessGroupSelect) return;
+        
+        const doSetGroups = () => {
+            if (assessGroupSelect.setGroups) {
+                const currentValue = assessGroupSelect.getValue();
+                assessGroupSelect.setGroups(groups);
+                assessGroupSelect.setValue(currentValue);
+            }
+        };
+
+        if (customElements.get('competency-group-selector')) {
+            doSetGroups();
+        } else {
+            customElements.whenDefined('competency-group-selector').then(doSetGroups);
+        }
+    }
+
     obsModalClose.addEventListener('click', () => {
         obsModal.classList.add('hidden');
         obsModal.style.display = 'none'; // Ensure it's hidden
@@ -54,6 +146,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
 
     // Listen for custom element changes
     learnerListEl.addEventListener('change', (e) => {
+        if (!e.detail) return;
         const newSelected = new Set(e.detail.selectedIds);
         
         // Additions
@@ -67,6 +160,30 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         // Removals
         for (const id of selectedLearnerIds) {
             if (!newSelected.has(id)) {
+                // Check if this learner has unsaved changes
+                let hasUnsaved = false;
+                for (const key of unsavedAssessments.keys()) {
+                    if (key.startsWith(id + '_')) {
+                        hasUnsaved = true;
+                        break;
+                    }
+                }
+                
+                if (hasUnsaved) {
+                    if (!confirm("This learner has unsaved assessments. Remove them and discard changes?")) {
+                        // Keep them selected in UI by triggering a re-render or re-checking
+                        // Easiest is to just re-add them to learnerListEl
+                        learnerListEl.toggleLearner(id, true);
+                        continue;
+                    } else {
+                        // Discard their unsaved changes
+                        for (const key of unsavedAssessments.keys()) {
+                            if (key.startsWith(id + '_')) unsavedAssessments.delete(key);
+                        }
+                        updateGlobalSaveBtn();
+                    }
+                }
+                
                 selectedLearnerIds.delete(id);
                 removeLearnerFromGrid(id);
             }
@@ -95,22 +212,9 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         }
     }
 
-    function getFilteredComps() {
-        const competencies = AppState.rootData?.Competency || [];
-        const groups = AppState.rootData?.CompetencyGroup || [];
-        const filterGroupDropdown = document.getElementById('toolbar_filter_group');
-        const activeGroupId = filterGroupDropdown ? filterGroupDropdown.value : '';
-        
-        if (activeGroupId && activeGroupId !== '') {
-            const group = groups.find(g => g.id === activeGroupId);
-            if (group) {
-                return competencies.filter(c => group.competencyIds && group.competencyIds.includes(c.id));
-            }
-        }
-        return competencies;
-    }
 
-    async function renderAssessmentGrid() {
+
+    function renderAssessmentGrid() {
         gridContainer.innerHTML = '';
         
         if (selectedLearnerIds.size === 0) {
@@ -118,34 +222,64 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             return;
         }
 
-        const filteredComps = getFilteredComps();
-        if (filteredComps.length === 0) {
-            gridContainer.innerHTML = '<div id="assess_initial_placeholder" class="placeholder-text card">No competencies found in the selected view/filter.</div>';
+        const comps = AppState.rootData?.Competency || [];
+        if (comps.length === 0) {
+            gridContainer.innerHTML = '<div id="assess_initial_placeholder" class="placeholder-text card">No competencies found in the system.</div>';
             return;
         }
 
         for (const learnerId of selectedLearnerIds) {
-            const section = await renderLearnerSection(learnerId, filteredComps);
-            if (section) gridContainer.appendChild(section);
+            const section = document.createElement('div');
+            section.className = 'card assess-learner-section';
+            section.dataset.learnerId = learnerId;
+            section.style.marginBottom = '24px';
+            section.style.padding = '0';
+            section.style.padding = '0';
+            section.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">Loading...</div>';
+            
+            gridContainer.appendChild(section);
+
+            renderLearnerSection(learnerId, comps).then(populatedSection => {
+                if (populatedSection) {
+                    section.replaceWith(populatedSection);
+                } else {
+                    section.remove();
+                }
+            });
         }
     }
     
     async function addLearnerToGrid(learnerId) {
+        if (gridContainer.querySelector(`div[data-learner-id="${learnerId}"]`)) return;
+
         const initialPlaceholder = gridContainer.querySelector('#assess_initial_placeholder');
-        if (initialPlaceholder) {
-            initialPlaceholder.remove();
-        }
+        if (initialPlaceholder) initialPlaceholder.remove();
+
+        const section = document.createElement('div');
+        section.className = 'card assess-learner-section';
+        section.dataset.learnerId = learnerId;
+        section.style.marginBottom = '24px';
+        section.style.padding = '0';
+        section.style.padding = '0';
+        section.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">Loading...</div>';
         
-        const filteredComps = getFilteredComps();
-        if (filteredComps.length === 0) {
+        gridContainer.appendChild(section);
+
+        const comps = AppState.rootData?.Competency || [];
+        if (comps.length === 0) {
+            section.remove();
             if (gridContainer.children.length === 0) {
-                gridContainer.innerHTML = '<div id="assess_initial_placeholder" class="placeholder-text card">No competencies found in the selected view/filter.</div>';
+                gridContainer.innerHTML = '<div id="assess_initial_placeholder" class="placeholder-text card">No competencies found in the system.</div>';
             }
             return;
         }
-        
-        const section = await renderLearnerSection(learnerId, filteredComps);
-        if (section) gridContainer.appendChild(section);
+
+        const populatedSection = await renderLearnerSection(learnerId, comps);
+        if (populatedSection) {
+            section.replaceWith(populatedSection);
+        } else {
+            section.remove();
+        }
     }
     
     function removeLearnerFromGrid(learnerId) {
@@ -168,7 +302,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         section.dataset.learnerId = learnerId;
         section.style.marginBottom = '24px';
         section.style.padding = '0';
-        section.style.overflow = 'hidden';
+        section.style.padding = '0';
         
         const header = document.createElement('div');
         header.style.padding = '12px 16px';
@@ -176,6 +310,11 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         header.style.borderBottom = '1px solid var(--border)';
         header.style.fontWeight = '600';
         header.style.fontSize = '1.1rem';
+        header.style.position = 'sticky';
+        header.style.top = '70px';
+        header.style.zIndex = '10';
+        header.style.borderTopLeftRadius = 'calc(var(--radius-md, 8px) - 1px)';
+        header.style.borderTopRightRadius = 'calc(var(--radius-md, 8px) - 1px)';
         header.textContent = learner.displayName || learner.name;
         section.appendChild(header);
         
@@ -199,17 +338,41 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         table.style.borderCollapse = 'collapse';
         table.style.fontSize = '0.9rem';
         
-        const thead = document.createElement('thead');
-        thead.innerHTML = `
-            <tr style="background: var(--bg); border-bottom: 2px solid var(--border);">
-                <th style="padding: 12px; text-align: left; position: sticky; left: 0; background: var(--bg); z-index: 2;">Competency Assessment</th>
-            </tr>
-        `;
-        table.appendChild(thead);
-        
         const tbody = document.createElement('tbody');
         
+        const activeGroupId = (assessGroupSelect && assessGroupSelect.getValue) ? assessGroupSelect.getValue() : 'all';
+        const groups = AppState.rootData?.['Competency Group'] || [];
+        const activeGroup = activeGroupId !== 'all' ? groups.find(g => g.id === activeGroupId) : null;
+        
+        let addedCount = 0;
+        
         filteredComps.forEach(comp => {
+            let includeComp = false;
+            
+            if (activeGroupId === 'all') {
+                includeComp = true;
+            } else if (activeGroup && activeGroup.competencyIds && activeGroup.competencyIds.includes(comp.id)) {
+                includeComp = true;
+            }
+            
+            if (!includeComp) {
+                // Check if there are observations more recent than the last assessment
+                const compObs = observations.filter(o => o.competencyId === comp.id);
+                const compAssess = summativeAssessments.filter(a => a.competencyId === comp.id);
+                
+                let lastAssessTime = 0;
+                if (compAssess.length > 0) {
+                    lastAssessTime = Math.max(...compAssess.map(a => new Date(a.date).getTime()));
+                }
+                
+                const hasNewer = compObs.some(o => new Date(o.date).getTime() > lastAssessTime);
+                if (hasNewer) {
+                    includeComp = true;
+                }
+            }
+            
+            if (!includeComp) return;
+            addedCount++;
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--border)';
             
@@ -238,7 +401,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             compTop.appendChild(compDesc);
             rowContent.appendChild(compTop);
             
-            // Middle: Timeline and Assessment Marker
+            // Middle: Timeline and Buttons
             const compMid = document.createElement('div');
             compMid.style.display = 'flex';
             compMid.style.alignItems = 'center';
@@ -251,12 +414,11 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             timelineDiv.style.flex = '1';
             timelineDiv.style.display = 'flex';
             timelineDiv.style.gap = '8px';
-            timelineDiv.style.justifyContent = 'space-between';
+            timelineDiv.style.justifyContent = 'flex-start';
             timelineDiv.style.flexWrap = 'nowrap';
             timelineDiv.style.overflowX = 'auto';
             timelineDiv.style.alignItems = 'center';
             
-            // Deduplicate summative assessments by taking the latest timestamp for each ID
             const uniqueAssessments = Array.from(
                 summativeAssessments
                     .sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp))
@@ -317,65 +479,80 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
                 });
             }
             
-            const markerDiv = document.createElement('div');
-            markerDiv.style.padding = '4px 8px';
-            markerDiv.style.fontSize = '0.7rem';
-            markerDiv.style.fontWeight = '600';
-            markerDiv.style.color = '#fff';
-            markerDiv.style.borderRadius = '4px';
-            markerDiv.style.background = 'var(--text-muted)';
-            markerDiv.style.border = '2px solid rgba(0,0,0,0.1)';
-            markerDiv.style.flexShrink = '0';
-            markerDiv.textContent = '?';
-            
-            timelineDiv.appendChild(markerDiv);
             compMid.appendChild(timelineDiv);
-            rowContent.appendChild(compMid);
-            
-            // Bottom: Assessment Entry Form
+
+            // Stack buttons to the right of the timeline
+            const btnRow = document.createElement('div');
+            btnRow.style.display = 'flex';
+            btnRow.style.gap = '4px';
+            btnRow.style.marginLeft = '16px';
+            btnRow.style.flexShrink = '0';
+// Bottom: Assessment Entry Form
             const compBot = document.createElement('div');
             compBot.style.display = 'flex';
             compBot.style.flexDirection = 'column';
             compBot.style.gap = '8px';
             
-            const btnRow = document.createElement('div');
-            btnRow.style.display = 'flex';
-            btnRow.style.gap = '4px';
+            const stateKey = `${learnerId}_${comp.id}`;
+            let currentState = unsavedAssessments.get(stateKey) || {};
+            let currentRating = currentState.rating !== undefined ? currentState.rating : undefined;
             
-            let currentRating = undefined;
-            
+            function updateUnsavedState() {
+                if (currentRating === undefined && !noteInput.value.trim() && !guideInput.value.trim()) {
+                    unsavedAssessments.delete(stateKey);
+                } else {
+                    unsavedAssessments.set(stateKey, {
+                        learnerId: learnerId,
+                        id: `ass_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`,
+                        competencyId: comp.id,
+                        assessorEmail: uiPrefs.getUserEmail() || 'unknown',
+                        rating: currentRating,
+                        summativeNote: noteInput.value.trim(),
+                        guidance: guideInput.value.trim(),
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                updateGlobalSaveBtn();
+            }
+
             const btns = summativeRatings.map(sr => {
                 const btn = document.createElement('button');
                 btn.textContent = sr.label;
                 btn.title = sr.title;
-                btn.style.flex = '1';
-                btn.style.padding = '6px 4px';
-                btn.style.fontSize = '0.75rem';
-                btn.style.borderRadius = '4px';
-                btn.style.cursor = 'pointer';
-                btn.style.border = '1px solid var(--border)';
-                btn.style.background = 'var(--bg)';
-                btn.style.color = 'var(--text-main)';
-                btn.style.fontWeight = '400';
+                btn.className = 'btn-rating';
+                
+                if (currentRating === sr.val) {
+                    btn.classList.add('selected');
+                    btn.style.border = `1px solid ${sr.color}`;
+                    btn.style.background = sr.color;
+                }
                 
                 btn.onclick = () => {
-                    markUnsaved();
-                    currentRating = sr.val;
+                    if (currentRating === sr.val) {
+                        currentRating = undefined; // toggle off
+                    } else {
+                        currentRating = sr.val;
+                    }
+                    
                     Array.from(btnRow.children).forEach((b, i) => {
-                        b.style.border = currentRating === summativeRatings[i].val ? `1px solid ${summativeRatings[i].color}` : '1px solid var(--border)';
-                        b.style.background = currentRating === summativeRatings[i].val ? summativeRatings[i].color : 'var(--bg)';
-                        b.style.color = currentRating === summativeRatings[i].val ? '#fff' : 'var(--text-main)';
-                        b.style.fontWeight = currentRating === summativeRatings[i].val ? '600' : '400';
+                        if (currentRating === summativeRatings[i].val) {
+                            b.classList.add('selected');
+                            b.style.border = `1px solid ${summativeRatings[i].color}`;
+                            b.style.background = summativeRatings[i].color;
+                        } else {
+                            b.classList.remove('selected');
+                            b.style.border = '1px solid var(--border)';
+                            b.style.background = 'var(--bg)';
+                        }
                     });
                     
-                    markerDiv.textContent = sr.label;
-                    markerDiv.style.background = sr.color;
-                    markerDiv.style.color = '#fff';
-                    markerDiv.style.borderColor = 'rgba(0,0,0,0.1)';
+                    updateUnsavedState();
                 };
                 return btn;
             });
             btns.forEach(b => btnRow.appendChild(b));
+            compMid.appendChild(btnRow);
+            rowContent.appendChild(compMid);
             
             const noteInput = document.createElement('input');
             noteInput.type = 'text';
@@ -383,8 +560,8 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             noteInput.placeholder = 'Summative Note...';
             noteInput.style.fontSize = '0.8rem';
             noteInput.style.padding = '6px';
-            noteInput.value = '';
-            noteInput.addEventListener('input', markUnsaved);
+            noteInput.value = currentState.summativeNote || '';
+            noteInput.addEventListener('input', updateUnsavedState);
             
             const guideInput = document.createElement('input');
             guideInput.type = 'text';
@@ -392,72 +569,24 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             guideInput.placeholder = 'Guidance / Next Steps...';
             guideInput.style.fontSize = '0.8rem';
             guideInput.style.padding = '6px';
-            guideInput.value = '';
-            guideInput.addEventListener('input', markUnsaved);
+            guideInput.value = currentState.guidance || '';
+            guideInput.addEventListener('input', updateUnsavedState);
             
-            const submitBtn = document.createElement('button');
-            submitBtn.className = 'btn-primary';
-            submitBtn.style.padding = '6px 12px';
-            submitBtn.style.fontSize = '0.8rem';
-            submitBtn.textContent = 'Save Assessment';
-            
-            function markUnsaved() {
-                if (submitBtn.textContent === 'Saved!' || submitBtn.disabled) {
-                    submitBtn.textContent = submitBtn.dataset.assessmentId ? 'Update Assessment' : 'Save Assessment';
-                    submitBtn.style.background = '';
-                    submitBtn.style.borderColor = '';
-                    submitBtn.disabled = false;
-                }
-            }
-
-            submitBtn.onclick = async () => {
-                if (currentRating === undefined) {
-                    alert("Please select a rating.");
-                    return;
-                }
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Saving...';
-                
-                const isUpdate = !!submitBtn.dataset.assessmentId;
-                const newId = isUpdate ? submitBtn.dataset.assessmentId : `ass_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
-                
-                const assessment = {
-                    id: newId,
-                    competencyId: comp.id,
-                    assessorEmail: uiPrefs.getUserEmail() || 'unknown',
-                    rating: currentRating,
-                    summativeNote: noteInput.value.trim(),
-                    guidance: guideInput.value.trim(),
-                    timestamp: new Date().toISOString()
-                };
-                
-                try {
-                    await storage.addAssessment(learnerId, assessment);
-                    submitBtn.dataset.assessmentId = newId;
-                    submitBtn.textContent = 'Saved!';
-                    submitBtn.style.background = 'var(--success, #10b981)';
-                    submitBtn.style.borderColor = 'var(--success, #10b981)';
-                } catch (err) {
-                    console.error(err);
-                    alert("Error saving assessment: " + err.message);
-                    submitBtn.textContent = submitBtn.dataset.assessmentId ? 'Update Assessment' : 'Save Assessment';
-                    submitBtn.style.background = '';
-                    submitBtn.style.borderColor = '';
-                    submitBtn.disabled = false;
-                }
-            };
-            
-            compBot.appendChild(btnRow);
             compBot.appendChild(noteInput);
             compBot.appendChild(guideInput);
-            compBot.appendChild(submitBtn);
             
-            rowContent.appendChild(compBot);
+rowContent.appendChild(compBot);
             td.appendChild(rowContent);
             tr.appendChild(td);
             
             tbody.appendChild(tr);
         });
+        
+        if (addedCount === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td style="padding: 16px; text-align: center; color: var(--text-muted);">No matching competencies or recent observations found for this learner.</td>`;
+            tbody.appendChild(tr);
+        }
         
         table.appendChild(tbody);
         tableWrap.appendChild(table);
@@ -501,4 +630,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         obsModal.style.display = 'flex';
         obsModal.classList.remove('hidden');
     }
+
+    // Initial load for custom elements
+    renderAssessGroupSelect();
 }

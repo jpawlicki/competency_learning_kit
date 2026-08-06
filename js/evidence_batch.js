@@ -4,17 +4,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
     const nameInput = document.getElementById('evidence_name');
     const learnerListEl = document.getElementById('evidence_learner_list');
     
-    const suggestedContainer = document.getElementById('evidence_assignment_goals_container');
-    const suggestedList = document.getElementById('evidence_assignment_goals_list');
-    
-    const recentContainer = document.getElementById('evidence_recent_goals_container');
-    const recentList = document.getElementById('evidence_recent_goals_list');
-    
-    const filteredContainer = document.getElementById('evidence_filtered_goals_container');
-    const filteredTitle = document.getElementById('evidence_filtered_title');
-    const filteredList = document.getElementById('evidence_filtered_goals_list');
-    
-    const allList = document.getElementById('evidence_goals_selector');
+    const compListEl = document.getElementById('evidence_comp_list');
     
     const tableHeadRow = document.querySelector('#batch_rating_table thead tr');
     const tbody = document.getElementById('batch_rating_tbody');
@@ -32,10 +22,6 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
     let courses = [];
     let courseworkCache = {};
 
-    function getSelectedGroup() {
-        const filterEl = document.getElementById('competency-group-select');
-        return filterEl ? filterEl.value : 'ALL';
-    }
 
     async function loadClassrooms() {
         try {
@@ -88,19 +74,25 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
         const selected = assignSelect.selectedOptions[0];
         if (selected && selected.value !== 'NEW' && selected.value !== '') {
             nameInput.value = selected.dataset.title || selected.textContent;
-            renderGoalSelectors();
+            renderCompetencies();
         }
         classroomScores = {};
         rebuildTable();
     });
 
     nameInput.addEventListener('input', () => {
-        renderGoalSelectors();
+        renderCompetencies();
     });
 
-    // Listen for custom element changes
     learnerListEl.addEventListener('change', (e) => {
+        if (!e.detail) return; // Ignore native checkbox change events bubbling up
         selectedLearnerIds = new Set(e.detail.selectedIds);
+        rebuildTable();
+    });
+
+    compListEl.addEventListener('change', (e) => {
+        if (!e.detail) return;
+        selectedGoalIds = new Set(e.detail.selectedIds);
         rebuildTable();
     });
 
@@ -111,91 +103,14 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
         document.getElementById('evidence_form').classList.remove('hidden');
     }
 
-    function createGoalCheckbox(comp) {
-        const div = document.createElement('div');
-        div.style.display = 'flex';
-        div.style.alignItems = 'center';
-        div.style.gap = '6px';
-        
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.id = `goal_cb_${Math.random().toString(36).substr(2, 9)}`;
-        cb.dataset.goalId = comp.id;
-        cb.checked = selectedGoalIds.has(comp.id);
-        
-        cb.onchange = (e) => {
-            if (e.target.checked) selectedGoalIds.add(comp.id);
-            else selectedGoalIds.delete(comp.id);
-            
-            // Sync all checkboxes for this goal
-            document.querySelectorAll(`input[data-goal-id="${comp.id}"]`).forEach(input => {
-                input.checked = e.target.checked;
-            });
-            rebuildTable();
-        };
-        
-        const lbl = document.createElement('label');
-        lbl.htmlFor = cb.id;
-        lbl.textContent = comp.name;
-        lbl.style.fontSize = '0.85rem';
-        lbl.style.cursor = 'pointer';
-        lbl.title = comp.description || '';
-        
-        div.appendChild(cb);
-        div.appendChild(lbl);
-        return div;
-    }
-
-    function renderGoalSelectors() {
+    function renderCompetencies() {
         const evidenceName = nameInput.value.trim();
-        const suggestedIds = new Set(evidenceName ? uiPrefs.getCompetenciesForAssignment(evidenceName) : []);
-        const recentIds = new Set(uiPrefs.getRecentCompetencyIds());
+        const suggestedIds = evidenceName ? uiPrefs.getCompetenciesForAssignment(evidenceName) : [];
         
         const comps = AppState.rootData?.Competency || [];
         const groups = AppState.rootData?.['Competency Group'] || [];
         
-        // Populate Suggested
-        suggestedList.innerHTML = '';
-        if (suggestedIds.size > 0) {
-            comps.filter(c => suggestedIds.has(c.id)).forEach(c => suggestedList.appendChild(createGoalCheckbox(c)));
-            suggestedContainer.classList.remove('hidden');
-        } else {
-            suggestedContainer.classList.add('hidden');
-        }
-        
-        // Populate Recent
-        recentList.innerHTML = '';
-        if (recentIds.size > 0) {
-            comps.filter(c => recentIds.has(c.id)).forEach(c => recentList.appendChild(createGoalCheckbox(c)));
-            recentContainer.classList.remove('hidden');
-        } else {
-            recentContainer.classList.add('hidden');
-        }
-        
-        // Populate Filtered
-        const selectedGroupId = getSelectedGroup();
-        filteredList.innerHTML = '';
-        if (selectedGroupId && selectedGroupId !== 'ALL' && selectedGroupId !== 'UNGROUPED') {
-            const group = groups.find(g => g.id === selectedGroupId);
-            if (group) {
-                filteredTitle.textContent = `Competencies in: ${group.name}`;
-                comps.filter(c => group.competencyIds.includes(c.id)).forEach(c => filteredList.appendChild(createGoalCheckbox(c)));
-                filteredContainer.classList.remove('hidden');
-            } else {
-                filteredContainer.classList.add('hidden');
-            }
-        } else if (selectedGroupId === 'UNGROUPED') {
-            filteredTitle.textContent = `Ungrouped Competencies`;
-            comps.filter(c => !groups.some(g => g.competencyIds.includes(c.id))).forEach(c => filteredList.appendChild(createGoalCheckbox(c)));
-            filteredContainer.classList.remove('hidden');
-        } else {
-            filteredContainer.classList.add('hidden');
-        }
-        
-        // Populate All
-        allList.innerHTML = '';
-        const sortedComps = [...comps].sort((a,b) => a.name.localeCompare(b.name));
-        sortedComps.forEach(c => allList.appendChild(createGoalCheckbox(c)));
+        compListEl.setCompetencies(comps, groups, suggestedIds);
     }
 
     function rebuildTable() {
@@ -338,7 +253,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
     const globalFilterEl = document.getElementById('competency-group-select');
     if (globalFilterEl) {
         globalFilterEl.addEventListener('change', () => {
-            renderGoalSelectors();
+            renderCompetencies();
         });
     }
 
@@ -432,12 +347,13 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             noteInput.value = '';
             fileInput.value = '';
             learnerListEl.clearSelection();
+            compListEl.clearSelection();
             selectedLearnerIds.clear();
             selectedGoalIds.clear();
             ratings = {};
             classroomScores = {};
             renderLearners();
-            renderGoalSelectors();
+            renderCompetencies();
             rebuildTable();
             
         } catch (e) {
@@ -451,6 +367,6 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
 
     // Initial load
     renderLearners();
-    renderGoalSelectors();
+    renderCompetencies();
     loadClassrooms();
 }
