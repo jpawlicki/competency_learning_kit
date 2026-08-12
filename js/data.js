@@ -827,13 +827,13 @@ export class StorageGoogleDrive extends Storage {
 
     const data = await this.sheetsRequest(components.rootDataId, '/values/A:Z');
     const existingRows = data.values || [];
-    
+
     const studentRowIndex = existingRows.findIndex(r => r[0] === 'Student' && r[1] === name);
     if (studentRowIndex === -1) {
         throw new Error("Student not found.");
     }
     const folderId = existingRows[studentRowIndex][2];
-    
+
     if (folderId) {
         try {
             await this.driveRequest(`/files/${folderId}`, { method: 'DELETE' });
@@ -844,7 +844,7 @@ export class StorageGoogleDrive extends Storage {
 
     const newRows = [...existingRows];
     newRows.splice(studentRowIndex, 1);
-    
+
     await this.sheetsRequest(components.rootDataId, '/values/A:Z:clear', { method: 'POST' });
     await this.sheetsRequest(components.rootDataId, '/values/A1?valueInputOption=USER_ENTERED', {
       method: 'PUT',
@@ -859,7 +859,7 @@ export class StorageGoogleDrive extends Storage {
     }
     const data = await this.sheetsRequest(components.rootDataId, '/values/A:Z');
     const existingRows = data.values || [];
-    
+
     // Keep everything that is NOT a Learner Group
     const filteredRows = existingRows.filter(row => row[0] !== 'Learner Group');
 
@@ -885,12 +885,12 @@ export class StorageGoogleDrive extends Storage {
 
     const data = await this.sheetsRequest(components.rootDataId, '/values/A:Z');
     const existingRows = data.values || [];
-    
+
     const studentRowIndex = existingRows.findIndex(r => r[0] === 'Student' && r[1] === name);
     if (studentRowIndex === -1) {
         throw new Error("Student not found.");
     }
-    
+
     // Ensure the row has enough columns (column 4 is index 4, which means length >= 5)
     while (existingRows[studentRowIndex].length < 5) {
         existingRows[studentRowIndex].push('');
@@ -917,7 +917,7 @@ export class StorageGoogleDrive extends Storage {
     // 2. Update spreadsheet row
     const data = await this.sheetsRequest(components.rootDataId, '/values/A:Z');
     const existingRows = data.values || [];
-    
+
     let found = false;
     for (let i = 0; i < existingRows.length; i++) {
         if (existingRows[i][0] === 'Institution Name') {
@@ -926,7 +926,7 @@ export class StorageGoogleDrive extends Storage {
             break;
         }
     }
-    
+
     if (!found) {
         existingRows.unshift(['Institution Name', newName]);
     }
@@ -944,11 +944,11 @@ export class StorageGoogleDrive extends Storage {
 
     const data = await this.sheetsRequest(components.rootDataId, '/values/A:Z');
     const existingRows = data.values || [];
-    
+
     // Keep everything that is NOT a Competency, Goal, or Competency Group
-    const filteredRows = existingRows.filter(row => 
-        row[0] !== 'Competency' && 
-        row[0] !== 'Goal' && 
+    const filteredRows = existingRows.filter(row =>
+        row[0] !== 'Competency' &&
+        row[0] !== 'Goal' &&
         row[0] !== 'Competency Group'
     );
 
@@ -987,7 +987,7 @@ export class StorageGoogleDrive extends Storage {
 
     const data = await this.sheetsRequest(components.rootDataId, '/values/A:Z');
     const existingRows = data.values || [];
-    
+
     // Keep everything that is NOT a Radial Report Template
     const filteredRows = existingRows.filter(row => row[0] !== 'Radial Report Template');
 

@@ -48,7 +48,7 @@ function calculateCompetencyScores(competencies, evidenceList, startTime, endTim
         }
 
         const withinRange = allRatings.filter(r => r.timestamp >= startTime && r.timestamp <= endTime);
-        
+
         if (withinRange.length > 0) {
             // Evaluated mean of evidence within range
             const sum = withinRange.reduce((acc, r) => acc + r.score, 0);

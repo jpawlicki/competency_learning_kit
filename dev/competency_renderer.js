@@ -27,7 +27,7 @@ class CompetencyRenderer {
      */
     render(competencies, selectedCompetencyId = null, hoveredCompetencyId = null, scores = null) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
+
         if (!competencies || competencies.length === 0) {
             this.ctx.fillStyle = '#64748b';
             this.ctx.textAlign = 'center';
@@ -41,7 +41,7 @@ class CompetencyRenderer {
             const r = parseFloat(c.endLevel) || 0;
             if (r > maxRadius) maxRadius = r;
         });
-        
+
         // Add a small buffer and calculate scale
         const margin = 0.9;
         this.scale = (Math.min(this.canvas.width, this.canvas.height) / 2 * margin) / maxRadius;
@@ -58,7 +58,7 @@ class CompetencyRenderer {
         });
 
         // Filter competencies if in report mode
-        this.renderedCompetencies = scores 
+        this.renderedCompetencies = scores
             ? this.lastRenderedCompetencies.filter(c => c.score !== undefined && c.score !== null)
             : this.lastRenderedCompetencies;
 
@@ -77,7 +77,7 @@ class CompetencyRenderer {
     calculateAbsoluteTheta(competency, competencyMap) {
         let theta = parseFloat(competency.position) || 0;
         let current = competency;
-        
+
         // Traverse up to find parent offsets
         while (current.parentId && current.parentId !== '-1') {
             const parent = competencyMap.get(current.parentId.toString());
@@ -85,7 +85,7 @@ class CompetencyRenderer {
             theta += parseFloat(parent.position) || 0;
             current = parent;
         }
-        
+
         // Offset by -PI/2 so 0 is North
         return theta - Math.PI / 2;
     }
@@ -102,7 +102,7 @@ class CompetencyRenderer {
     getAdjustedOuterRadius(competency) {
         const innerRadius = parseFloat(competency.startLevel) * this.scale;
         const fullOuterRadius = parseFloat(competency.endLevel) * this.scale;
-        
+
         if (competency.score !== undefined && competency.score !== null) {
             const score = Math.max(5, competency.score); // Clamp min to 5%
             return innerRadius + (fullOuterRadius - innerRadius) * (score / 100);
@@ -127,7 +127,7 @@ class CompetencyRenderer {
         this.ctx.globalAlpha = !anyHovered || isSelected || isHovered ? 1.0 : 0.4;
         this.ctx.fill();
         this.ctx.globalAlpha = 1.0;
-        
+
         this.ctx.strokeStyle = isSelected || isHovered ? '#e2e8f0' : '#ffffff';
         this.ctx.lineWidth = isSelected || isHovered ? 3 : 1;
         this.ctx.stroke();
@@ -151,7 +151,7 @@ class CompetencyRenderer {
 
             this.ctx.save();
             this.ctx.translate(x, y);
-            
+
             // Normalize angle to 0 - 2PI for logic
             let normAngle = midAngle;
             while (normAngle < 0) normAngle += Math.PI * 2;
@@ -162,16 +162,16 @@ class CompetencyRenderer {
             if (normAngle > Math.PI / 2 && normAngle < (3 * Math.PI) / 2) {
                 rotation += Math.PI;
             }
-            
+
             this.ctx.rotate(rotation);
-            
+
             const baseColor = competency.color || '#94a3b8';
             const textColor = this.getContrastColor(baseColor);
             this.ctx.fillStyle = textColor;
             this.ctx.font = isHovered ? 'bold 12px sans-serif' : '10px sans-serif';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
-            
+
             let name = competency.name;
             if (!isHovered) {
                 // Measure and truncate if needed
@@ -184,7 +184,7 @@ class CompetencyRenderer {
                     }
                     name += '...';
                 }
-                
+
                 // Final check: if even '...' is too wide, hide it
                 if (this.ctx.measureText('...').width > availableWidth) {
                     name = '';
@@ -199,7 +199,7 @@ class CompetencyRenderer {
     getAdjustedOuterLevel(competency) {
         const startLevel = parseFloat(competency.startLevel);
         const endLevel = parseFloat(competency.endLevel);
-        
+
         if (competency.score !== undefined && competency.score !== null) {
             const score = Math.max(5, competency.score); // Clamp min to 5%
             return startLevel + (endLevel - startLevel) * (score / 100);
@@ -214,17 +214,17 @@ class CompetencyRenderer {
         const dy = y - this.centerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const level = distance / this.scale;
-        
+
         let angle = Math.atan2(dy, dx);
-        
+
         for (const competency of this.renderedCompetencies) {
             const startLevel = parseFloat(competency.startLevel);
             const endLevel = this.getAdjustedOuterLevel(competency);
-            
+
             if (level >= startLevel && level <= endLevel) {
                 let competencyStart = competency.absTheta;
                 let competencyEnd = competency.absTheta + parseFloat(competency.width);
-                
+
                 // Normalize both to [0, 2PI] for comparison
                 const normalize = (a) => {
                     while (a < 0) a += Math.PI * 2;

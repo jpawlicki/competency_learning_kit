@@ -3,22 +3,22 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
     const assignSelect = document.getElementById('evidence_assignment_selector');
     const nameInput = document.getElementById('evidence_name');
     const learnerListEl = document.getElementById('evidence_learner_list');
-    
+
     const compListEl = document.getElementById('evidence_comp_list');
-    
+
     const tableHeadRow = document.querySelector('#batch_rating_table thead tr');
     const tbody = document.getElementById('batch_rating_tbody');
-    
+
     const noteInput = document.getElementById('evidence_note');
     const fileInput = document.getElementById('evidence_file');
     const submitBtn = document.getElementById('submit_evidence_button');
-    
+
     let selectedLearnerIds = new Set();
     let selectedGoalIds = new Set();
     // store ratings as: learnerId -> goalId -> rating
     let ratings = {};
     let classroomScores = {};
-    
+
     let courses = [];
     let courseworkCache = {};
 
@@ -45,16 +45,16 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             assignSelect.disabled = true;
             return;
         }
-        
+
         assignSelect.innerHTML = '<option value="">Loading...</option>';
         assignSelect.disabled = true;
-        
+
         try {
             if (!courseworkCache[courseId]) {
                 const cw = await classroom.fetchCourseWork(courseId);
                 courseworkCache[courseId] = cw;
             }
-            
+
             assignSelect.innerHTML = '<option value="">-- Select Assignment --</option><option value="NEW">Create New Assignment...</option>';
             courseworkCache[courseId].forEach(cw => {
                 const opt = document.createElement('option');
@@ -106,10 +106,10 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
     function renderCompetencies() {
         const evidenceName = nameInput.value.trim();
         const suggestedIds = evidenceName ? uiPrefs.getCompetenciesForAssignment(evidenceName) : [];
-        
+
         const comps = AppState.rootData?.Competency || [];
         const groups = AppState.rootData?.['Competency Group'] || [];
-        
+
         compListEl.setCompetencies(comps, groups, suggestedIds);
     }
 
@@ -118,10 +118,10 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
         while (tableHeadRow.children.length > 1) {
             tableHeadRow.removeChild(tableHeadRow.lastChild);
         }
-        
+
         const comps = AppState.rootData?.Competency || [];
         const selectedComps = Array.from(selectedGoalIds).map(id => comps.find(c => c.id === id)).filter(Boolean);
-        
+
         if (assignSelect.value !== '') {
             const th = document.createElement('th');
             th.textContent = 'Score';
@@ -131,7 +131,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             th.style.textAlign = 'center';
             tableHeadRow.appendChild(th);
         }
-        
+
         selectedComps.forEach(comp => {
             const th = document.createElement('th');
             th.textContent = comp.name;
@@ -141,9 +141,9 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             th.style.textAlign = 'center';
             tableHeadRow.appendChild(th);
         });
-        
+
         tbody.innerHTML = '';
-        
+
         if (selectedLearnerIds.size === 0) {
             const tr = document.createElement('tr');
             const td = document.createElement('td');
@@ -159,10 +159,10 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
 
         const learners = AppState.rootData?.Student || [];
         const selectedLearnersList = Array.from(selectedLearnerIds).map(id => learners.find(s => s.learnerDataId === id)).filter(Boolean);
-        
+
         selectedLearnersList.forEach(learner => {
             if (!ratings[learner.learnerDataId]) ratings[learner.learnerDataId] = {};
-            
+
             const tr = document.createElement('tr');
             const tdName = document.createElement('td');
             tdName.textContent = learner.displayName || learner.name;
@@ -174,13 +174,13 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             tdName.style.zIndex = '1';
             tdName.style.fontWeight = '500';
             tr.appendChild(tdName);
-            
+
             if (assignSelect.value !== '') {
                 const tdScore = document.createElement('td');
                 tdScore.style.padding = '8px';
                 tdScore.style.borderBottom = '1px solid var(--border)';
                 tdScore.style.textAlign = 'center';
-                
+
                 const scoreInput = document.createElement('input');
                 scoreInput.type = 'number';
                 scoreInput.style.width = '60px';
@@ -193,25 +193,25 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
                         classroomScores[learner.learnerDataId] = parseFloat(e.target.value);
                     }
                 };
-                
+
                 tdScore.appendChild(scoreInput);
                 tr.appendChild(tdScore);
             }
-            
+
             selectedComps.forEach(comp => {
                 const td = document.createElement('td');
                 td.style.padding = '8px';
                 td.style.borderBottom = '1px solid var(--border)';
                 td.style.textAlign = 'center';
                 td.style.minWidth = '120px';
-                
+
                 const btnContainer = document.createElement('div');
                 btnContainer.style.display = 'flex';
                 btnContainer.style.gap = '4px';
                 btnContainer.style.justifyContent = 'center';
-                
+
                 const val = ratings[learner.learnerDataId][comp.id];
-                
+
                 const setRating = (lId, cId, v) => {
                     if (ratings[lId][cId] === v) {
                         delete ratings[lId][cId];
@@ -220,7 +220,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
                     }
                     rebuildTable();
                 };
-                
+
                 const createBtn = (label, v, color) => {
                     const btn = document.createElement('button');
                     btn.textContent = label;
@@ -235,16 +235,16 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
                     btn.onclick = () => setRating(learner.learnerDataId, comp.id, v);
                     return btn;
                 };
-                
-                btnContainer.appendChild(createBtn('Not Yet', 0.0, '#ef4444'));
-                btnContainer.appendChild(createBtn('Developing', 0.5, '#f59e0b'));
-                btnContainer.appendChild(createBtn('Demonstrates', 1.0, '#10b981'));
-                
+
+                btnContainer.appendChild(createBtn('No', 0.0, '#ef4444'));
+                btnContainer.appendChild(createBtn('Some', 0.5, '#f59e0b'));
+                btnContainer.appendChild(createBtn('Yes', 1.0, '#10b981'));
+
                 td.appendChild(btnContainer);
-                
+
                 tr.appendChild(td);
             });
-            
+
             tbody.appendChild(tr);
         });
     }
@@ -263,7 +263,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             alert("Evidence Name is required.");
             return;
         }
-        
+
         if (selectedLearnerIds.size === 0) {
             alert("Select at least one learner.");
             return;
@@ -276,15 +276,15 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
 
         submitBtn.disabled = true;
         submitBtn.textContent = 'Saving Evidence... (This may take a moment)';
-        
+
         try {
             let courseId = courseSelect.value;
             let courseWorkId = assignSelect.value;
-            
+
             if (courseId && courseWorkId === 'NEW') {
                 const created = await classroom.createCourseWork(courseId, evName);
                 courseWorkId = created.id;
-                
+
                 // Update select dropdown
                 const opt = document.createElement('option');
                 opt.value = courseWorkId;
@@ -293,9 +293,9 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
                 assignSelect.insertBefore(opt, assignSelect.options[1]);
                 assignSelect.value = courseWorkId;
             }
-            
+
             const learners = AppState.rootData?.Student || [];
-            
+
             const promises = Array.from(selectedLearnerIds).map(async (learnerId) => {
                 const evidence = {
                     id: `ev_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`,
@@ -304,12 +304,13 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
                     timestamp: ts,
                     authorEmail: authorEmail
                 };
-                
+
                 const observations = [];
                 if (ratings[learnerId]) {
                     Object.keys(ratings[learnerId]).forEach(compId => {
                         observations.push({
                             id: `obs_${Math.random().toString(36).substr(2, 9)}`,
+                            evidenceId: evidence.id,
                             competencyId: compId,
                             authorEmail: authorEmail,
                             rating: ratings[learnerId][compId],
@@ -317,10 +318,10 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
                         });
                     });
                 }
-                
+
                 // Even if observations is empty, we can still add evidence (e.g. just a note/artifact)
                 await storage.addEvidenceAndObservations(learnerId, evidence, observations, files);
-                
+
                 // Sync grade to classroom if applicable
                 const score = classroomScores[learnerId];
                 if (courseId && courseWorkId && score !== undefined) {
@@ -334,14 +335,14 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
                     }
                 }
             });
-            
+
             await Promise.all(promises);
-            
+
             // Update uiPrefs for Recent/Assignment goals
             uiPrefs.recordCompetencyUsage(Array.from(selectedGoalIds), evName);
-            
+
             alert('Batch evidence saved successfully!');
-            
+
             // Reset form
             nameInput.value = '';
             noteInput.value = '';
@@ -355,7 +356,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             renderLearners();
             renderCompetencies();
             rebuildTable();
-            
+
         } catch (e) {
             console.error(e);
             alert("Error saving batch evidence: " + e.message);

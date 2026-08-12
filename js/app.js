@@ -22,11 +22,11 @@ const AppState = {
         if (this.isLoaded) return this.rootData;
         if (this.loadPromise) return this.loadPromise;
         if (!uiPrefs.getAccessToken()) return null;
-        
+
         this.isLoading = true;
         const loader = document.getElementById('global-loading');
         if (loader) loader.classList.remove('hidden');
-        
+
         this.loadPromise = storage.readRootData().then(data => {
             this.rootData = data;
             this.isLoaded = true;
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 section.classList.remove('active');
             }
         });
-        
+
         if (targetId === 'view-admin') {
             document.querySelector('.filter-group')?.classList.add('invisible');
             const activeAdminTab = document.querySelector('.tab-btn[data-admin-tab="students"]');
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.addEventListener('click', (e) => {
                 tabs.forEach(t => t.classList.remove('active'));
                 e.currentTarget.classList.add('active');
-                
+
                 // If this is the Admin section tabs
                 if (e.currentTarget.hasAttribute('data-admin-tab')) {
                     const targetTabId = e.currentTarget.dataset.adminTab;
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         targetContent.classList.remove('hidden');
                         targetContent.classList.add('active');
                     }
-                    
+
                     if (targetTabId === 'students') {
                         loadStudents();
                     } else if (targetTabId === 'competencies') {
@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             },
         });
-        
+
         // Auto-login if we have a token cached in sessionStorage
         if (uiPrefs.getAccessToken()) {
             handleLoginSuccess();
@@ -193,11 +193,11 @@ document.addEventListener('DOMContentLoaded', () => {
         uiPrefs.clearAccessToken();
         uiPrefs.clearUserEmail();
         uiPrefs.clearProjectComponentIds();
-        
+
         loginState.setLoggedOut();
         if (authRefreshOverlay) authRefreshOverlay.classList.remove('hidden');
         if (topNav) topNav.classList.add('auth-refresh-active');
-        
+
         // Reset Admin View
         document.getElementById('student_list').innerHTML = '<li class="placeholder-text">Please sign in to view learners.</li>';
     });
@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleLoginSuccess() {
         if (authRefreshOverlay) authRefreshOverlay.classList.add('hidden');
         if (topNav) topNav.classList.remove('auth-refresh-active');
-        
+
         // Try to fetch the user's email from Drive API if we don't have it
         let email = uiPrefs.getUserEmail();
         if (!email) {
@@ -221,14 +221,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         loginState.setLoggedIn(email);
-        
+
         try {
             const components = await storage.resolveProjectComponents();
             if (components && components.rootDataId) {
                 // connected
-                
+
                 updateSettingsUIState(true);
-                
+
                 AppState.invalidate();
                 AppState.load().then(() => {
                     initEvidenceBatchUI(AppState, storage, classroom, uiPrefs);
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const learnerGroupDescInput = document.getElementById('learner_group_desc');
     const btnSaveLearnerGroup = document.getElementById('save_learner_group_btn');
     const btnCancelLearnerGroup = document.getElementById('cancel_learner_group_btn');
-    
+
     const learnerGroupsListEl = document.getElementById('learner_groups_list');
     const learnerGroupCheckboxesEl = document.getElementById('learner_group_checkboxes');
     const btnToggleAddLearner = document.getElementById('toggle_add_learner_btn');
@@ -322,15 +322,15 @@ document.addEventListener('DOMContentLoaded', () => {
             studentsLoadingEl.classList.remove('hidden');
             studentListEl.innerHTML = '';
         }
-        
+
         try {
             const rootData = await AppState.load();
             studentsLoadingEl.classList.add('hidden');
-            
+
             if (rootData) {
                 allLearners = rootData.Student || [];
                 archLearnerGroups = rootData['Learner Group'] || [];
-                
+
                 if (selectedLearnerGroupId === null && archLearnerGroups.length > 0) {
                     // Check if there are ungrouped learners
                     const hasUngrouped = allLearners.some(l => !l.groupIds || l.groupIds.length === 0);
@@ -350,9 +350,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLearnerGroups(groups) {
         learnerGroupsListEl.innerHTML = '';
         learnerGroupCheckboxesEl.innerHTML = '';
-        
+
         const hasUngroupedLearners = allLearners.some(l => !l.groupIds || l.groupIds.length === 0);
-        
+
         // Add "All Learners" pseudo-group
         const allLi = document.createElement('li');
         allLi.textContent = 'All Learners';
@@ -378,15 +378,15 @@ document.addEventListener('DOMContentLoaded', () => {
             learnerGroupCheckboxesEl.innerHTML = '<div class="placeholder-text" style="font-size: 0.8rem;">No groups available.</div>';
             return;
         }
-        
+
         groups.sort((a, b) => a.name.localeCompare(b.name)).forEach(group => {
             // Render list item
             const li = document.createElement('li');
             li.className = 'group-list-item' + (selectedLearnerGroupId === group.id ? ' selected' : '');
-            
+
             const nameSpan = document.createElement('span');
             nameSpan.textContent = group.name;
-            
+
             li.appendChild(nameSpan);
 
             const editBtn = document.createElement('button');
@@ -397,19 +397,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 openLearnerGroupForm(group);
             };
             li.appendChild(editBtn);
-            
+
             li.onclick = () => { selectedLearnerGroupId = group.id; renderLearnerGroups(archLearnerGroups); renderStudentList(); };
 
             learnerGroupsListEl.appendChild(li);
-            
+
             // Render checkbox
             const cbLabel = document.createElement('label');
             cbLabel.className = 'checkbox-label';
-            
+
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.value = group.id;
-            
+
             cbLabel.appendChild(cb);
             cbLabel.appendChild(document.createTextNode(group.name));
             learnerGroupCheckboxesEl.appendChild(cbLabel);
@@ -489,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderStudentList() {
         studentListEl.innerHTML = '';
-        
+
         let filteredLearners = [];
         if (selectedLearnerGroupId === 'ALL') {
             filteredLearners = allLearners;
@@ -503,22 +503,22 @@ document.addEventListener('DOMContentLoaded', () => {
             studentListEl.innerHTML = '<li class="placeholder-text">No learners found in this view.</li>';
             return;
         }
-        
+
         filteredLearners.sort((a, b) => a.name.localeCompare(b.name)).forEach(student => {
             const li = document.createElement('li');
             li.className = 'list-card';
-            
+
             const nameSpan = document.createElement('span');
             nameSpan.textContent = student.name;
             nameSpan.style.fontWeight = '500';
-            
+
             const btnGroup = document.createElement('div');
             btnGroup.className = 'flex-row gap-sm';
-            
+
             const delBtn = document.createElement('button');
             delBtn.textContent = 'Delete';
             delBtn.className = 'btn-danger btn-sm';
-            
+
             delBtn.addEventListener('click', async () => {
                 if (confirm(`Are you sure you want to delete ${student.name}? This will delete their folder in Drive.`)) {
                     delBtn.disabled = true;
@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-            
+
             btnGroup.appendChild(delBtn);
             li.appendChild(nameSpan);
             li.appendChild(btnGroup);
@@ -545,19 +545,19 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAddStudent.addEventListener('click', async () => {
         const inputVal = newStudentInput.value.trim();
         if (!inputVal) return;
-        
+
         const names = inputVal.split(',').map(n => n.trim()).filter(Boolean);
         if (names.length === 0) return;
-        
+
         // Collect checked groups
         const selectedGroupIds = Array.from(learnerGroupCheckboxesEl.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-        
+
         // --- Optimistic UI ---
         newStudentInput.value = '';
         if (studentListEl.querySelector('.placeholder-text')) {
             studentListEl.innerHTML = '';
         }
-        
+
         const optimisticLis = [];
         for (const name of names) {
             const optimisticLi = document.createElement('li');
@@ -569,19 +569,19 @@ document.addEventListener('DOMContentLoaded', () => {
             optimisticLi.style.borderRadius = 'var(--radius-md)';
             optimisticLi.style.background = 'var(--surface)';
             optimisticLi.style.opacity = '0.7';
-            
+
             const nameSpan = document.createElement('span');
             nameSpan.textContent = name;
             nameSpan.style.fontWeight = '500';
-            
+
             const statusSpan = document.createElement('span');
             statusSpan.textContent = 'Adding...';
             statusSpan.style.fontSize = '0.8rem';
             statusSpan.style.color = 'var(--text-muted)';
-            
+
             optimisticLi.appendChild(nameSpan);
             optimisticLi.appendChild(statusSpan);
-            
+
             // Insert in alphabetical order
             const items = Array.from(studentListEl.children);
             let inserted = false;
@@ -630,23 +630,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         btnLoadClassrooms.disabled = true;
         btnLoadClassrooms.textContent = 'Loading...';
-        
+
         try {
             const courses = await classroom.fetchClassrooms();
             selectClassroom.innerHTML = '<option value="">Choose a course...</option>';
-            
+
             if (courses.length === 0) {
                 alert("No active Google Classroom courses found.");
                 return;
             }
-            
+
             courses.forEach(course => {
                 const opt = document.createElement('option');
                 opt.value = course.id;
                 opt.textContent = course.name;
                 selectClassroom.appendChild(opt);
             });
-            
+
             btnLoadClassrooms.classList.add('hidden');
             containerClassroomSelect.classList.remove('hidden');
         } catch (error) {
@@ -667,14 +667,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         btnImportClassroom.disabled = true;
         btnImportClassroom.textContent = 'Importing...';
-        
+
         try {
             // First ensure we have the latest students cached
             const rootData = await AppState.load();
             const existingStudents = rootData?.Student || [];
-            
+
             const { importedCount, skippedCount } = await classroom.importStudentsFromClassrooms([courseId], existingStudents, storage);
-            
+
             alert(`Import complete! Imported ${importedCount} new learners. Skipped/Linked ${skippedCount} existing learners.`);
             AppState.invalidate();
             await loadStudents();
@@ -702,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
             settingsTitle.textContent = 'Institution Settings';
             settingsDesc.textContent = 'Update your institution name for the project.';
             btnInitProject.textContent = 'Update Name';
-            
+
             try {
                 const data = await AppState.load();
                 if (data && data['Institution Name']) {
@@ -727,7 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const institutionName = inputInstitutionName.value.trim();
         btnInitProject.disabled = true;
-        
+
         if (isProjectConnected) {
             btnInitProject.textContent = 'Updating...';
             try {
@@ -749,7 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // connected
                 AppState.invalidate();
                 updateSettingsUIState(true);
-                
+
                 // Reload students if that tab happens to be active
                 const activeAdminTab = document.querySelector('.tab-btn[data-admin-tab="students"]');
                 if (activeAdminTab && activeAdminTab.classList.contains('active')) {
@@ -774,7 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm("DANGER: Are you absolutely sure you want to permanently delete the entire 'Competency Learning Kit Data' folder and ALL student records from Google Drive? This cannot be undone.")) {
             btnDeleteProject.disabled = true;
             btnDeleteProject.textContent = 'Deleting...';
-            
+
             try {
                 await storage.deleteProject();
                 AppState.invalidate();
@@ -801,14 +801,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupsListEl = document.getElementById('competency_groups_list');
     const compListEl = document.getElementById('competency_list');
     const compListContainer = document.getElementById('competency_list_container');
-    
+
     // Group Form
     const groupEditForm = document.getElementById('group_edit_form');
     const groupNameInput = document.getElementById('group_name');
     const groupDescInput = document.getElementById('group_desc');
     const groupIdInput = document.getElementById('group_id');
     const groupFormTitle = document.getElementById('group_form_title');
-    
+
     // Competency Form
     const compEditForm = document.getElementById('competency_edit_form');
     const compIdInput = document.getElementById('comp_id');
@@ -821,19 +821,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadCompetencyArchitecture() {
         if (!uiPrefs.getAccessToken()) return;
-        
+
         try {
             const rootData = await AppState.load();
             // Work with a fresh reference so we can mutate safely before saving
             archGroups = rootData['Competency Group'] || [];
             archCompetencies = rootData['Competency'] || [];
-            
+
             // Set default view to ALL if nothing selected
             if (selectedGroupId === null && archGroups.length > 0) {
                 const hasUngrouped = archCompetencies.some(c => !archGroups.some(g => g.competencyIds.includes(c.id)));
                 if (!hasUngrouped) selectedGroupId = 'ALL';
             }
-            
+
             renderGroupsList();
             renderCompetenciesList();
         } catch (e) {
@@ -843,7 +843,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderGroupsList() {
         groupsListEl.innerHTML = '';
-        
+
         // Add "All Competencies" pseudo-group
         const allLi = document.createElement('li');
         allLi.textContent = 'All Competencies';
@@ -867,11 +867,11 @@ document.addEventListener('DOMContentLoaded', () => {
             hideForms();
             return;
         }
-        
+
         archGroups.forEach(g => {
             const li = document.createElement('li');
             li.className = 'group-list-item' + (selectedGroupId === g.id ? ' selected' : '');
-            
+
             const nameSpan = document.createElement('span');
             nameSpan.textContent = g.name;
             li.appendChild(nameSpan);
@@ -885,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 openGroupForm(g);
             };
             li.appendChild(editBtn);
-            
+
             li.onclick = () => { selectedGroupId = g.id; renderGroupsList(); renderCompetenciesList(); hideForms(); };
             groupsListEl.appendChild(li);
         });
@@ -900,7 +900,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderCompetenciesList() {
         compListEl.innerHTML = '';
         document.getElementById('add_competency_btn').classList.remove('hidden');
-        
+
         let filteredComps = [];
         if (selectedGroupId === 'ALL') {
             document.getElementById('detail_group_title').textContent = 'All Competencies';
@@ -925,15 +925,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             li.className = 'list-card';
             li.style.borderLeft = `4px solid ${c.color}`;
-            
+
             const infoDiv = document.createElement('div');
             infoDiv.innerHTML = `<strong style="${c.state === 'RETIRED' ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${c.name}</strong><br><span style="font-size: 0.8rem; color: var(--text-muted);">${c.description || ''}</span>`;
-            
+
             const editBtn = document.createElement('button');
             editBtn.className = 'material-symbols-outlined btn-icon';
             editBtn.textContent = 'edit';
             editBtn.onclick = () => openCompForm(c);
-            
+
             li.appendChild(infoDiv);
             li.appendChild(editBtn);
             compListEl.appendChild(li);
@@ -944,7 +944,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('add_group_btn').addEventListener('click', () => {
         openGroupForm(null);
     });
-    
+
     function openGroupForm(group) {
         groupEditForm.classList.remove('hidden');
         if (group) {
@@ -959,16 +959,16 @@ document.addEventListener('DOMContentLoaded', () => {
             groupDescInput.value = '';
         }
     }
-    
+
     document.getElementById('cancel_group_btn').addEventListener('click', () => {
         groupEditForm.classList.add('hidden');
     });
-    
+
     document.getElementById('save_group_btn').addEventListener('click', async () => {
         const id = groupIdInput.value || `group_${Date.now()}`;
         const name = groupNameInput.value.trim();
         if (!name) return alert('Name is required');
-        
+
         let existing = archGroups.find(g => g.id === id);
         if (existing) {
             existing.name = name;
@@ -981,7 +981,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 competencyIds: []
             });
         }
-        
+
         groupEditForm.classList.add('hidden');
         renderGroupsList();
         await saveArchitecture();
@@ -1006,12 +1006,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function openCompForm(comp) {
         compEditForm.classList.remove('hidden');
         compListContainer.classList.add('hidden');
-        
+
         populateMultiSelect(compRelatedSelect, archCompetencies.filter(c => !comp || c.id !== comp.id), comp ? comp.relatedIds : []);
-        
+
         const myGroups = comp ? archGroups.filter(g => g.competencyIds.includes(comp.id)).map(g => g.id) : (selectedGroupId && selectedGroupId !== 'ALL' ? [selectedGroupId] : []);
         populateMultiSelect(compGroupsSelect, archGroups, myGroups);
-        
+
         if (comp) {
             compFormTitle.textContent = 'Edit Competency';
             compIdInput.value = comp.id;
@@ -1035,10 +1035,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = compIdInput.value || `comp_${Date.now()}`;
         const name = compNameInput.value.trim();
         if (!name) return alert('Name is required');
-        
+
         const relatedIds = Array.from(compRelatedSelect.selectedOptions).map(o => o.value);
         const selectedGroups = Array.from(compGroupsSelect.selectedOptions).map(o => o.value);
-        
+
         let existing = archCompetencies.find(c => c.id === id);
         if (existing) {
             existing.name = name;
@@ -1057,7 +1057,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 rubric: ''
             });
         }
-        
+
         archGroups.forEach(g => {
             const hasComp = g.competencyIds.includes(id);
             const shouldHave = selectedGroups.includes(g.id);

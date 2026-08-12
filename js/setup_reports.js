@@ -34,7 +34,7 @@ export function initSetupReports(AppState, storage) {
 
     // Also re-load when data invalidates (e.g., auth changes)
     // We can expose a refresh method if needed, but for now we just observe
-    
+
     function renderList() {
         listEl.innerHTML = '';
         if (reportTemplates.length === 0) {
@@ -45,11 +45,11 @@ export function initSetupReports(AppState, storage) {
         reportTemplates.forEach(t => {
             const li = document.createElement('li');
             li.className = 'group-list-item' + (currentTemplateId === t.id ? ' selected' : '');
-            
+
             const span = document.createElement('span');
             span.textContent = t.name;
             li.appendChild(span);
-            
+
             const editBtn = document.createElement('button');
             editBtn.className = 'material-symbols-outlined btn-icon';
             editBtn.textContent = 'edit';
@@ -58,7 +58,7 @@ export function initSetupReports(AppState, storage) {
                 openEditor(t);
             };
             li.appendChild(editBtn);
-            
+
             li.onclick = () => openEditor(t);
             listEl.appendChild(li);
         });
@@ -73,8 +73,8 @@ export function initSetupReports(AppState, storage) {
                 const parts = pair.split('#');
                 const id = parts[0];
                 const anchorParts = parts[1] ? parts[1].split('-') : ['0'];
-                return { 
-                    id, 
+                return {
+                    id,
                     anchor: parseInt(anchorParts[0], 10) || 0,
                     span: parseInt(anchorParts[1], 10) || 1
                 };
@@ -233,7 +233,7 @@ export function initSetupReports(AppState, storage) {
             if (idx !== -1) {
                 removedInfo = { layer: i, index: idx };
                 layer.splice(idx, 1);
-                
+
                 if (i + 1 < currentData.length) {
                     const nextLayer = currentData[i + 1];
                     for (let j = 0; j < nextLayer.length; j++) {
@@ -247,7 +247,7 @@ export function initSetupReports(AppState, storage) {
                 break;
             }
         }
-        
+
         while (currentData.length > 0 && currentData[currentData.length - 1].length === 0) {
             currentData.pop();
         }
@@ -271,21 +271,21 @@ export function initSetupReports(AppState, storage) {
 
     sunburstEl.addEventListener('sunburst-drop', (e) => {
         let { item, layer, anchor, insertIndex } = e.detail;
-        
+
         const removedInfo = removeCompetencyFromConfig(item.id);
-        
+
         if (removedInfo && removedInfo.layer === layer && removedInfo.index < insertIndex) {
             insertIndex--;
         }
-        
+
         while (currentData.length <= layer) {
             currentData.push([]);
         }
-        
+
         currentData[layer].splice(insertIndex, 0, { id: item.id, anchor: anchor, span: 1 });
-        
+
         // 3. Fix anchors for the layer that was just inserted into!
-        // We inserted an element at insertIndex. 
+        // We inserted an element at insertIndex.
         // Any anchor in layer+1 that was >= insertIndex must be incremented.
         if (layer + 1 < currentData.length) {
             const nextLayer = currentData[layer + 1];
@@ -312,10 +312,10 @@ export function initSetupReports(AppState, storage) {
                 const item = currentData[layer][itemIdx];
                 item.anchor = anchor;
                 item.span = span;
-                
+
                 // Keep the layer sorted by anchor
                 currentData[layer].sort((a, b) => a.anchor - b.anchor);
-                
+
                 updateSunburst();
             }
         }
