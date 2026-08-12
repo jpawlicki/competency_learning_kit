@@ -225,7 +225,17 @@ export function initReportsView(AppState, storage) {
                         return (new Date(prev.timestamp) > new Date(current.timestamp)) ? prev : current;
                     });
 
-                    const ratingConf = summativeRatings.find(r => r.val === latest.rating);
+                    const groupKey = latest.assessmentGroupId || latest.id;
+                    const groupAss = compAssessments.filter(a => (a.assessmentGroupId || a.id) === groupKey && a.rating !== undefined);
+                    
+                    let meanRating = latest.rating || 0;
+                    if (groupAss.length > 0) {
+                        meanRating = groupAss.reduce((sum, a) => sum + a.rating, 0) / groupAss.length;
+                    }
+                    
+                    let finalRating = (meanRating === 0.0) ? 0.0 : (meanRating === 1.0) ? 1.0 : 0.5;
+                    const ratingConf = summativeRatings.find(r => r.val === finalRating);
+                    
                     const pill = document.createElement('div');
                     pill.style.display = 'inline-block';
                     pill.style.padding = '4px 8px';
@@ -354,7 +364,16 @@ export function initReportsView(AppState, storage) {
                         const latest = compAssessments.reduce((prev, current) => {
                             return (new Date(prev.timestamp) > new Date(current.timestamp)) ? prev : current;
                         });
-                        node.score = latest.rating; // 0.0, 0.5, 1.0
+                        
+                        const groupKey = latest.assessmentGroupId || latest.id;
+                        const groupAss = compAssessments.filter(a => (a.assessmentGroupId || a.id) === groupKey && a.rating !== undefined);
+                        
+                        let meanRating = latest.rating || 0;
+                        if (groupAss.length > 0) {
+                            meanRating = groupAss.reduce((sum, a) => sum + a.rating, 0) / groupAss.length;
+                        }
+                        
+                        node.score = meanRating;
                     } else {
                         node.score = null; // Not assessed
                     }

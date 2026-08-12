@@ -6,7 +6,7 @@ import { initSetupReports } from './setup_reports.js';
 import { initReportsView } from './reports.js';
 
 const CLIENT_ID = '767614918217-040505l01huso2e5f42bavj5magf27p8.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.rosters.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.coursework.me';
+const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.rosters.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.coursework.me';
 
 const uiPrefs = createUIPrefsBrowserStorage();
 const storage = createStorageGoogleDrive(uiPrefs);
@@ -815,6 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const compNameInput = document.getElementById('comp_name');
     const compDescInput = document.getElementById('comp_desc');
     const compColorInput = document.getElementById('comp_color');
+    const compColorSwatches = document.getElementById('comp_color_swatches');
     const compGroupsSelect = document.getElementById('comp_groups');
     const compRelatedSelect = document.getElementById('comp_related');
     const compFormTitle = document.getElementById('comp_form_title');
@@ -1011,6 +1012,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const myGroups = comp ? archGroups.filter(g => g.competencyIds.includes(comp.id)).map(g => g.id) : (selectedGroupId && selectedGroupId !== 'ALL' ? [selectedGroupId] : []);
         populateMultiSelect(compGroupsSelect, archGroups, myGroups);
+
+        if (compColorSwatches) {
+            compColorSwatches.innerHTML = '';
+            const uniqueColors = [...new Set(archCompetencies.map(c => c.color).filter(c => c))];
+            if (uniqueColors.length === 0) {
+                uniqueColors.push('#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa');
+            }
+            uniqueColors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.style.width = '24px';
+                swatch.style.height = '24px';
+                swatch.style.borderRadius = '50%';
+                swatch.style.backgroundColor = color;
+                swatch.style.cursor = 'pointer';
+                swatch.style.border = '1px solid var(--border)';
+                swatch.title = color;
+                swatch.addEventListener('click', () => {
+                    compColorInput.value = color;
+                });
+                compColorSwatches.appendChild(swatch);
+            });
+        }
 
         if (comp) {
             compFormTitle.textContent = 'Edit Competency';

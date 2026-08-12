@@ -440,7 +440,7 @@ export class StorageGoogleDrive extends Storage {
       close_delim
     ], { type: 'multipart/related; boundary=' + boundary });
 
-    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -473,7 +473,7 @@ export class StorageGoogleDrive extends Storage {
 
     if (!folderId) {
       const query = encodeURIComponent(`name = '${this.FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
-      const res = await this.driveRequest(`/files?q=${query}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+      const res = await this.driveRequest(`/files?q=${query}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true&corpora=allDrives`);
       if (res.files && res.files.length > 0) {
         folderId = res.files[0].id;
       } else {
@@ -483,7 +483,7 @@ export class StorageGoogleDrive extends Storage {
 
     if (folderId && (!rootDataId || !learnersFolderId)) {
       const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
-      const data = await this.driveRequest(`/files?q=${query}&fields=files(id,name,mimeType)&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+      const data = await this.driveRequest(`/files?q=${query}&fields=files(id,name,mimeType)&supportsAllDrives=true&includeItemsFromAllDrives=true&corpora=allDrives`);
       for (const file of (data.files || [])) {
         if (file.name === this.ROOT_DATA_NAME && file.mimeType === 'application/vnd.google-apps.spreadsheet') {
           rootDataId = file.id;
@@ -577,12 +577,12 @@ export class StorageGoogleDrive extends Storage {
     if (!components || !components.folderId) return [];
 
     const list = [];
-    const rootFolder = await this.driveRequest(`/files/${components.folderId}?fields=id,name,mimeType`);
+    const rootFolder = await this.driveRequest(`/files/${components.folderId}?fields=id,name,mimeType&supportsAllDrives=true`);
     if (rootFolder) list.push(rootFolder);
 
     const recursiveList = async (parentId) => {
       const query = encodeURIComponent(`'${parentId}' in parents and trashed = false`);
-      const data = await this.driveRequest(`/files?q=${query}&fields=files(id,name,mimeType)`);
+      const data = await this.driveRequest(`/files?q=${query}&fields=files(id,name,mimeType)&supportsAllDrives=true&includeItemsFromAllDrives=true&corpora=allDrives`);
       for (const file of (data.files || [])) {
         list.push(file);
         if (file.mimeType === 'application/vnd.google-apps.folder') {
@@ -599,7 +599,7 @@ export class StorageGoogleDrive extends Storage {
     const components = await this.resolveProjectComponents();
     if (!components || !components.folderId) return;
 
-    await this.driveRequest(`/files/${components.folderId}`, { method: 'DELETE' });
+    await this.driveRequest(`/files/${components.folderId}?supportsAllDrives=true`, { method: 'DELETE' });
 
     this.uiPrefs.clearProjectComponentIds();
 
@@ -743,12 +743,13 @@ export class StorageGoogleDrive extends Storage {
       } else if (type === 'Assessment') {
         learnerDict['Assessment'].push({
           id: row[1] || '',
-          competencyId: row[2] || '',
-          assessorEmail: row[3] || '',
-          rating: parseFloat(row[4]) || 0,
-          summativeNote: row[5] || '',
-          guidance: row[6] || '',
-          timestamp: row[7] || ''
+          assessmentGroupId: row[2] || '',
+          competencyId: row[3] || '',
+          assessorEmail: row[4] || '',
+          rating: (row[5] !== '' && row[5] !== undefined) ? parseFloat(row[5]) : undefined,
+          summativeNote: row[6] || '',
+          guidance: row[7] || '',
+          timestamp: row[8] || ''
         });
       }
     });
@@ -762,7 +763,7 @@ export class StorageGoogleDrive extends Storage {
       throw new Error("CLK project structure not initialized.");
     }
 
-    const studentFolder = await this.driveRequest('/files?fields=id', {
+    const studentFolder = await this.driveRequest('/files?fields=id&supportsAllDrives=true', {
       method: 'POST',
       body: JSON.stringify({
         name: name,
@@ -771,7 +772,7 @@ export class StorageGoogleDrive extends Storage {
       })
     });
 
-    const learnerData = await this.driveRequest('/files?fields=id', {
+    const learnerData = await this.driveRequest('/files?fields=id&supportsAllDrives=true', {
       method: 'POST',
       body: JSON.stringify({
         name: 'Learner Data',
@@ -795,7 +796,7 @@ export class StorageGoogleDrive extends Storage {
       })
     });
 
-    const artifactsFolder = await this.driveRequest('/files?fields=id', {
+    const artifactsFolder = await this.driveRequest('/files?fields=id&supportsAllDrives=true', {
       method: 'POST',
       body: JSON.stringify({
         name: 'Artifacts',
@@ -836,7 +837,7 @@ export class StorageGoogleDrive extends Storage {
 
     if (folderId) {
         try {
-            await this.driveRequest(`/files/${folderId}`, { method: 'DELETE' });
+            await this.driveRequest(`/files/${folderId}?supportsAllDrives=true`, { method: 'DELETE' });
         } catch(e) {
             console.warn("Could not delete folder from drive:", e);
         }
@@ -909,7 +910,7 @@ export class StorageGoogleDrive extends Storage {
     if (!components || !components.folderId || !components.rootDataId) throw new Error("Project not found.");
 
     // 1. Update folder name
-    await this.driveRequest(`/files/${components.folderId}`, {
+    await this.driveRequest(`/files/${components.folderId}?supportsAllDrives=true`, {
         method: 'PATCH',
         body: JSON.stringify({ name: newName + ' - CLK Data' })
     });
@@ -1124,7 +1125,7 @@ export class StorageGoogleDrive extends Storage {
     const copiedArtifactIds = [];
     if (artifactsFolderId && uploadedFiles.length > 0) {
       for (const file of uploadedFiles) {
-        const copy = await this.driveRequest(`/files/${file.id}/copy`, {
+        const copy = await this.driveRequest(`/files/${file.id}/copy?supportsAllDrives=true`, {
           method: 'POST',
           body: JSON.stringify({
             parents: [artifactsFolderId],
@@ -1174,9 +1175,10 @@ export class StorageGoogleDrive extends Storage {
     const assessmentRow = [
       'Assessment',
       assessment.id || Date.now().toString(),
+      assessment.assessmentGroupId || '',
       assessment.competencyId,
       assessment.assessorEmail || '',
-      assessment.rating,
+      assessment.rating !== undefined ? assessment.rating : '',
       assessment.summativeNote || '',
       assessment.guidance || '',
       assessment.timestamp || new Date().toISOString()

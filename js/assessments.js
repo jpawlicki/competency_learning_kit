@@ -10,6 +10,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
 
     let selectedLearnerIds = new Set();
     const unsavedAssessments = new Map();
+    const explicitCancels = new Set();
     const saveAllBtn = document.getElementById('assess_save_all');
 
     function updateGlobalSaveBtn() {
@@ -47,6 +48,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
                 saveAllBtn.textContent = 'Retry Save';
             } else {
                 unsavedAssessments.clear();
+                explicitCancels.clear();
                 updateGlobalSaveBtn();
                 renderAssessmentGrid();
                 if(saveAllBtn) {
@@ -437,7 +439,25 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
                 ...compAss.map(a => ({ ...a, type: 'assessment' }))
             ].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-            if (combinedTimeline.length === 0) {
+            const timelineGroups = [];
+            const groupMap = new Map();
+
+            combinedTimeline.forEach(item => {
+                if (item.type === 'observation') {
+                    timelineGroups.push([item]);
+                } else {
+                    const gId = item.assessmentGroupId || item.id;
+                    if (groupMap.has(gId)) {
+                        groupMap.get(gId).push(item);
+                    } else {
+                        const groupArr = [item];
+                        groupMap.set(gId, groupArr);
+                        timelineGroups.push(groupArr);
+                    }
+                }
+            });
+
+            if (timelineGroups.length === 0) {
                 const empty = document.createElement('span');
                 empty.className = 'placeholder-text';
                 empty.style.fontSize = '0.8rem';
@@ -445,37 +465,148 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
                 empty.textContent = 'No prior evidence.';
                 timelineDiv.appendChild(empty);
             } else {
-                combinedTimeline.forEach(item => {
-                    const pill = document.createElement('div');
-                    pill.style.padding = '4px 8px';
-                    pill.style.fontSize = '0.7rem';
-                    pill.style.fontWeight = '600';
-                    pill.style.color = '#fff';
-                    pill.style.cursor = 'pointer';
-                    pill.style.flexShrink = '0';
+                timelineGroups.forEach(groupArr => {
+                    const isObservation = groupArr[0].type === 'observation';
+                    
+                    if (isObservation) {
+                        const item = groupArr[0];
+                        const pill = document.createElement('div');
+                        pill.style.padding = '4px 8px';
+                        pill.style.fontSize = '0.7rem';
+                        pill.style.fontWeight = '600';
+                        pill.style.color = '#fff';
+                        pill.style.cursor = 'pointer';
+                        pill.style.flexShrink = '0';
+                        pill.style.display = 'flex';
+                        pill.style.alignItems = 'center';
+                        pill.style.gap = '6px';
+                        
+                        const d = new Date(item.timestamp);
+                        const now = new Date();
+                        const isCurrentYear = d.getFullYear() === now.getFullYear();
+                        const dateStr = `${d.getMonth() + 1}/${d.getDate()}` + (isCurrentYear ? '' : ` ${d.getFullYear()}`);
 
-                    if (item.type === 'observation') {
-                        const ev = evidences.find(e => e.id === item.evidenceId);
+                        const labelSpan = document.createElement('span');
+                        const dateSpan = document.createElement('span');
+                        dateSpan.style.fontSize = '0.85em';
+                        dateSpan.style.opacity = '0.85';
+                        dateSpan.style.fontWeight = 'normal';
+                        dateSpan.textContent = dateStr;
+
+                        const ev = evidences.find(e => e.timestamp === item.timestamp && e.authorEmail === item.authorEmail);
                         const ratingConf = observationRatings[item.rating];
                         pill.style.borderRadius = '12px';
                         pill.style.background = ratingConf ? ratingConf.color : 'var(--text-muted)';
                         pill.title = ratingConf ? ratingConf.title : 'Unknown';
-                        pill.textContent = ratingConf ? ratingConf.label : '?';
+                        
+                        labelSpan.textContent = ratingConf ? ratingConf.label : '?';
+                        pill.appendChild(labelSpan);
+                        pill.appendChild(dateSpan);
+
                         pill.addEventListener('click', () => {
-                            showObservationDetails(item, ev, comp);
+                            showObservationDetails(item, ev, comp, learnerId);
                         });
+                        
+                        timelineDiv.appendChild(pill);
                     } else {
-                        const ratingConf = summativeRatings.find(r => r.val === item.rating);
-                        pill.style.borderRadius = '4px';
-                        pill.style.background = ratingConf ? ratingConf.color : 'var(--text-muted)';
-                        pill.style.border = '2px solid rgba(0,0,0,0.1)';
-                        pill.title = ratingConf ? ratingConf.title : 'Summative Assessment';
-                        pill.textContent = ratingConf ? ratingConf.label : '?';
-                        pill.addEventListener('click', () => {
-                            showObservationDetails(item, null, comp);
+                        // Assessment Group Stack
+                        const stackWrap = document.createElement('div');
+                        stackWrap.style.display = 'flex';
+                        stackWrap.style.alignItems = 'center';
+                        stackWrap.style.gap = '4px';
+                        stackWrap.style.padding = '2px';
+                        stackWrap.style.border = '1px solid var(--border)';
+                        stackWrap.style.borderRadius = '6px';
+                        stackWrap.style.background = 'rgba(0,0,0,0.015)';
+                        
+                        const stack = document.createElement('div');
+                        stack.style.display = 'flex';
+                        stack.style.flexDirection = 'column';
+                        stack.style.gap = '2px';
+                        
+                        groupArr.forEach(item => {
+                            const pill = document.createElement('div');
+                            pill.style.padding = '4px 8px';
+                            pill.style.fontSize = '0.7rem';
+                            pill.style.fontWeight = '600';
+                            pill.style.color = '#fff';
+                            pill.style.cursor = 'pointer';
+                            pill.style.display = 'flex';
+                            pill.style.alignItems = 'center';
+                            pill.style.gap = '6px';
+                            pill.style.borderRadius = '4px';
+                            
+                            const d = new Date(item.timestamp);
+                            const now = new Date();
+                            const isCurrentYear = d.getFullYear() === now.getFullYear();
+                            const dateStr = `${d.getMonth() + 1}/${d.getDate()}` + (isCurrentYear ? '' : ` ${d.getFullYear()}`);
+
+                            const labelSpan = document.createElement('span');
+                            const dateSpan = document.createElement('span');
+                            dateSpan.style.fontSize = '0.85em';
+                            dateSpan.style.opacity = '0.85';
+                            dateSpan.style.fontWeight = 'normal';
+                            dateSpan.textContent = dateStr;
+                            
+                            const ratingConf = summativeRatings.find(r => r.val === item.rating);
+                            pill.style.background = ratingConf ? ratingConf.color : 'var(--text-muted)';
+                            pill.title = ratingConf ? ratingConf.title : 'Summative Assessment';
+                            
+                            labelSpan.textContent = ratingConf ? ratingConf.label : '?';
+                            pill.appendChild(labelSpan);
+                            pill.appendChild(dateSpan);
+
+                            pill.addEventListener('click', () => {
+                                showObservationDetails(item, null, comp, learnerId);
+                            });
+                            
+                            stack.appendChild(pill);
                         });
+                        
+                        stackWrap.appendChild(stack);
+
+                        const userEmail = uiPrefs.getUserEmail();
+                        const authorItem = groupArr.find(a => a.assessorEmail === userEmail);
+                        const isEdit = !!authorItem;
+                        
+                        const actionBtn = document.createElement('span');
+                        actionBtn.innerHTML = isEdit ? '&#9998;' : '&#43;'; // pencil or plus
+                        actionBtn.style.cursor = 'pointer';
+                        actionBtn.style.padding = '0 6px';
+                        actionBtn.style.opacity = '0.7';
+                        actionBtn.style.fontSize = '1.1em';
+                        actionBtn.style.color = 'var(--text)';
+                        actionBtn.title = isEdit ? 'Edit your Assessment in this group' : 'Link to this Assessment Group';
+                        
+                        actionBtn.onmouseenter = () => actionBtn.style.opacity = '1';
+                        actionBtn.onmouseleave = () => actionBtn.style.opacity = '0.7';
+                        
+                        actionBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const stateKey = `${learnerId}_${comp.id}`;
+                            const baseItem = authorItem || groupArr[groupArr.length - 1];
+                            
+                            explicitCancels.delete(stateKey);
+                            
+                            unsavedAssessments.set(stateKey, {
+                                learnerId: learnerId,
+                                id: isEdit ? baseItem.id : `ass_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`,
+                                assessmentGroupId: baseItem.assessmentGroupId || baseItem.id,
+                                competencyId: comp.id,
+                                assessorEmail: userEmail || 'unknown',
+                                rating: isEdit ? baseItem.rating : undefined,
+                                summativeNote: isEdit ? baseItem.summativeNote : '',
+                                guidance: isEdit ? baseItem.guidance : '',
+                                timestamp: new Date().toISOString(),
+                                _isEdit: isEdit
+                            });
+                            updateGlobalSaveBtn();
+                            renderFormUI();
+                        });
+                        
+                        stackWrap.appendChild(actionBtn);
+                        timelineDiv.appendChild(stackWrap);
                     }
-                    timelineDiv.appendChild(pill);
                 });
             }
 
@@ -494,88 +625,162 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             compBot.style.gap = '8px';
 
             const stateKey = `${learnerId}_${comp.id}`;
-            let currentState = unsavedAssessments.get(stateKey) || {};
-            let currentRating = currentState.rating !== undefined ? currentState.rating : undefined;
 
-            function updateUnsavedState() {
-                if (currentRating === undefined && !noteInput.value.trim() && !guideInput.value.trim()) {
-                    unsavedAssessments.delete(stateKey);
-                } else {
-                    unsavedAssessments.set(stateKey, {
-                        learnerId: learnerId,
-                        id: `ass_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`,
-                        competencyId: comp.id,
-                        assessorEmail: uiPrefs.getUserEmail() || 'unknown',
-                        rating: currentRating,
-                        summativeNote: noteInput.value.trim(),
-                        guidance: guideInput.value.trim(),
-                        timestamp: new Date().toISOString()
-                    });
+            function renderFormUI() {
+                compBot.innerHTML = '';
+                btnRow.innerHTML = '';
+                
+                let currentState = unsavedAssessments.get(stateKey);
+                
+                if (!currentState && compAss.length > 0 && !explicitCancels.has(stateKey)) {
+                    const sortedAss = [...compAss].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+                    const latestAss = sortedAss[sortedAss.length - 1];
+                    
+                    let hasNewEvidence = false;
+                    if (compObs.length > 0) {
+                        const sortedObs = [...compObs].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+                        const latestObs = sortedObs[sortedObs.length - 1];
+                        if (new Date(latestObs.timestamp) > new Date(latestAss.timestamp)) {
+                            hasNewEvidence = true;
+                        }
+                    }
+                    
+                    if (!hasNewEvidence) {
+                        const userEmail = uiPrefs.getUserEmail();
+                        const groupKey = latestAss.assessmentGroupId || latestAss.id;
+                        const groupAssessments = compAss.filter(a => (a.assessmentGroupId || a.id) === groupKey);
+                        const authorItem = groupAssessments.find(a => a.assessorEmail === userEmail);
+                        const isEdit = !!authorItem;
+                        const baseItem = authorItem || latestAss;
+
+                        currentState = {
+                            learnerId: learnerId,
+                            id: isEdit ? baseItem.id : undefined,
+                            assessmentGroupId: baseItem.assessmentGroupId || baseItem.id,
+                            competencyId: comp.id,
+                            assessorEmail: userEmail || 'unknown',
+                            rating: isEdit ? baseItem.rating : undefined,
+                            summativeNote: isEdit ? baseItem.summativeNote : '',
+                            guidance: isEdit ? baseItem.guidance : '',
+                            timestamp: new Date().toISOString(),
+                            _isEdit: isEdit
+                        };
+                    }
                 }
-                updateGlobalSaveBtn();
-            }
 
-            const btns = summativeRatings.map(sr => {
-                const btn = document.createElement('button');
-                btn.textContent = sr.label;
-                btn.title = sr.title;
-                btn.className = 'btn-rating';
-
-                if (currentRating === sr.val) {
-                    btn.classList.add('selected');
-                    btn.style.border = `1px solid ${sr.color}`;
-                    btn.style.background = sr.color;
+                currentState = currentState || {};
+                let currentRating = currentState.rating !== undefined ? currentState.rating : undefined;
+                
+                if (currentState.assessmentGroupId) {
+                    const linkNotice = document.createElement('div');
+                    linkNotice.style.fontSize = '0.75rem';
+                    linkNotice.style.color = 'var(--text-muted)';
+                    const noticeText = currentState._isEdit ? '&#9998; Editing your assessment in this group' : '&#128279; Linking to Assessment Group';
+                    linkNotice.innerHTML = `<em>${noticeText}</em> <a href="#" style="color: var(--primary); text-decoration: none; margin-left: 8px;">(Cancel)</a>`;
+                    linkNotice.querySelector('a').onclick = (e) => {
+                        e.preventDefault();
+                        explicitCancels.add(stateKey);
+                        currentState.id = undefined;
+                        currentState.assessmentGroupId = undefined;
+                        currentState._isEdit = undefined;
+                        if (currentRating === undefined && !currentState.summativeNote && !currentState.guidance) {
+                            unsavedAssessments.delete(stateKey);
+                        } else {
+                            unsavedAssessments.set(stateKey, currentState);
+                        }
+                        updateGlobalSaveBtn();
+                        renderFormUI();
+                    };
+                    compBot.appendChild(linkNotice);
                 }
 
-                btn.onclick = () => {
-                    if (currentRating === sr.val) {
-                        currentRating = undefined; // toggle off
+                const noteInput = document.createElement('input');
+                noteInput.type = 'text';
+                noteInput.className = 'input-text';
+                noteInput.placeholder = 'Summative Note...';
+                noteInput.style.fontSize = '0.8rem';
+                noteInput.style.padding = '6px';
+                noteInput.value = currentState.summativeNote || '';
+
+                const guideInput = document.createElement('input');
+                guideInput.type = 'text';
+                guideInput.className = 'input-text';
+                guideInput.placeholder = 'Guidance / Next Steps...';
+                guideInput.style.fontSize = '0.8rem';
+                guideInput.style.padding = '6px';
+                guideInput.value = currentState.guidance || '';
+
+                function updateUnsavedState() {
+                    if (currentRating === undefined && !noteInput.value.trim() && !guideInput.value.trim()) {
+                        unsavedAssessments.delete(stateKey);
                     } else {
-                        currentRating = sr.val;
+                        const newId = currentState.id || `ass_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`;
+                        currentState = {
+                            learnerId: learnerId,
+                            id: newId,
+                            assessmentGroupId: currentState.assessmentGroupId || '',
+                            competencyId: comp.id,
+                            assessorEmail: uiPrefs.getUserEmail() || 'unknown',
+                            rating: currentRating,
+                            summativeNote: noteInput.value.trim(),
+                            guidance: guideInput.value.trim(),
+                            timestamp: new Date().toISOString(),
+                            _isEdit: currentState._isEdit
+                        };
+                        unsavedAssessments.set(stateKey, currentState);
+                    }
+                    updateGlobalSaveBtn();
+                }
+
+                noteInput.addEventListener('input', updateUnsavedState);
+                guideInput.addEventListener('input', updateUnsavedState);
+
+                const btns = summativeRatings.map(sr => {
+                    const btn = document.createElement('button');
+                    btn.textContent = sr.label;
+                    btn.title = sr.title;
+                    btn.className = 'btn-rating';
+
+                    if (currentRating === sr.val) {
+                        btn.classList.add('selected');
+                        btn.style.border = `1px solid ${sr.color}`;
+                        btn.style.background = sr.color;
                     }
 
-                    Array.from(btnRow.children).forEach((b, i) => {
-                        if (currentRating === summativeRatings[i].val) {
-                            b.classList.add('selected');
-                            b.style.border = `1px solid ${summativeRatings[i].color}`;
-                            b.style.background = summativeRatings[i].color;
+                    btn.onclick = () => {
+                        if (currentRating === sr.val) {
+                            currentRating = undefined; // toggle off
                         } else {
-                            b.classList.remove('selected');
-                            b.style.border = '1px solid var(--border)';
-                            b.style.background = 'var(--bg)';
+                            currentRating = sr.val;
                         }
-                    });
 
-                    updateUnsavedState();
-                };
-                return btn;
-            });
-            btns.forEach(b => btnRow.appendChild(b));
+                        Array.from(btnRow.children).forEach((b, i) => {
+                            if (currentRating === summativeRatings[i].val) {
+                                b.classList.add('selected');
+                                b.style.border = `1px solid ${summativeRatings[i].color}`;
+                                b.style.background = summativeRatings[i].color;
+                            } else {
+                                b.classList.remove('selected');
+                                b.style.border = '1px solid var(--border)';
+                                b.style.background = 'var(--bg)';
+                            }
+                        });
+
+                        updateUnsavedState();
+                    };
+                    return btn;
+                });
+                btns.forEach(b => btnRow.appendChild(b));
+
+                compBot.appendChild(noteInput);
+                compBot.appendChild(guideInput);
+            }
+
+            renderFormUI();
+            
             compMid.appendChild(btnRow);
             rowContent.appendChild(compMid);
-
-            const noteInput = document.createElement('input');
-            noteInput.type = 'text';
-            noteInput.className = 'input-text';
-            noteInput.placeholder = 'Summative Note...';
-            noteInput.style.fontSize = '0.8rem';
-            noteInput.style.padding = '6px';
-            noteInput.value = currentState.summativeNote || '';
-            noteInput.addEventListener('input', updateUnsavedState);
-
-            const guideInput = document.createElement('input');
-            guideInput.type = 'text';
-            guideInput.className = 'input-text';
-            guideInput.placeholder = 'Guidance / Next Steps...';
-            guideInput.style.fontSize = '0.8rem';
-            guideInput.style.padding = '6px';
-            guideInput.value = currentState.guidance || '';
-            guideInput.addEventListener('input', updateUnsavedState);
-
-            compBot.appendChild(noteInput);
-            compBot.appendChild(guideInput);
-
-rowContent.appendChild(compBot);
+            rowContent.appendChild(compBot);
             td.appendChild(rowContent);
             tr.appendChild(td);
 
@@ -594,7 +799,7 @@ rowContent.appendChild(compBot);
         return section;
     }
 
-    function showObservationDetails(obs, ev, comp) {
+    function showObservationDetails(obs, ev, comp, learnerId) {
         const isAssessment = ev === null;
 
         let title = '';

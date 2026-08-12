@@ -257,10 +257,37 @@ export function initSetupReports(AppState, storage) {
         return removedInfo;
     }
 
+    function sanitizeData(data) {
+        for (let i = 1; i < data.length; i++) {
+            const layer = data[i];
+            const mapped = layer.map((item, originalIndex) => ({ item, originalIndex }));
+            mapped.sort((a, b) => {
+                if (a.item.anchor !== b.item.anchor) {
+                    return a.item.anchor - b.item.anchor;
+                }
+                return a.originalIndex - b.originalIndex;
+            });
+            const oldToNew = {};
+            for (let newIndex = 0; newIndex < mapped.length; newIndex++) {
+                oldToNew[mapped[newIndex].originalIndex] = newIndex;
+                layer[newIndex] = mapped[newIndex].item;
+            }
+            if (i + 1 < data.length) {
+                const nextLayer = data[i + 1];
+                for (const nextItem of nextLayer) {
+                    if (nextItem.anchor !== undefined && nextItem.anchor in oldToNew) {
+                        nextItem.anchor = oldToNew[nextItem.anchor];
+                    }
+                }
+            }
+        }
+    }
+
     function updateSunburst() {
         const levels = parseInt(inputLevels.value, 10) || 4;
         const inner = parseFloat(inputInner.value) || 100;
         const outer = parseFloat(inputOuter.value) || 500;
+        sanitizeData(currentData);
         const enriched = enrichData(currentData);
         sunburstEl.setConfig(levels, inner, outer, enriched);
     }
@@ -312,9 +339,6 @@ export function initSetupReports(AppState, storage) {
                 const item = currentData[layer][itemIdx];
                 item.anchor = anchor;
                 item.span = span;
-
-                // Keep the layer sorted by anchor
-                currentData[layer].sort((a, b) => a.anchor - b.anchor);
 
                 updateSunburst();
             }
