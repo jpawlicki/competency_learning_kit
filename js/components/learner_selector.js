@@ -1,3 +1,4 @@
+import { createElement, setElementContents } from '../utils.js';
 export class LearnerSelector extends HTMLElement {
     constructor() {
         super();
@@ -90,10 +91,10 @@ export class LearnerSelector extends HTMLElement {
     }
 
     render() {
-        this.innerHTML = '';
+        setElementContents(this);
         
         if (this.learners.length === 0) {
-            this.innerHTML = '<div class="placeholder-text" style="font-size: 0.9rem;">No learners found.</div>';
+            setElementContents(this, createElement('div', { className: 'placeholder-text', style: 'font-size: 0.9rem;', textContent: 'No learners found.' }));
             return;
         }
 

@@ -1,3 +1,4 @@
+import { createElement, setElementContents } from '../utils.js';
 export class CLKSunburst extends HTMLElement {
     constructor() {
         super();
@@ -274,7 +275,7 @@ export class CLKSunburst extends HTMLElement {
     }
 
     render() {
-        this.svg.innerHTML = '';
+        setElementContents(this.svg);
         const rect = this.getBoundingClientRect();
         
         // If not attached yet or zero size, don't try to calculate centers

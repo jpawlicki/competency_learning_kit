@@ -1,3 +1,5 @@
+import { createElement, setElementContents } from '../utils.js';
+
 export class SetupWizard extends HTMLElement {
     constructor() {
         super();
@@ -200,7 +202,7 @@ export class SetupWizard extends HTMLElement {
         this.driveSelection.style.display = 'none';
         this.btnSubmit.disabled = true;
         this.btnSubmit.textContent = 'Create Data Folder';
-        this.driveList.innerHTML = '';
+        setElementContents(this.driveList);
         this.personalWarning.classList.remove('active');
         this.selectedDriveId = null;
 
@@ -208,24 +210,27 @@ export class SetupWizard extends HTMLElement {
             const drives = await this.storage.getAvailableDrives();
             
             drives.forEach(drive => {
-                const label = document.createElement('label');
-                label.className = 'radio-label';
-                label.innerHTML = `<input type="radio" name="drive" value="${drive.id}"> ${drive.name}`;
+                const label = createElement('label', { className: 'radio-label' }, [
+                    createElement('input', { type: 'radio', name: 'drive', value: drive.id }),
+                    document.createTextNode(` ${drive.name}`)
+                ]);
                 this.driveList.appendChild(label);
             });
 
             // Add personal drive as final option
-            const personalLabel = document.createElement('label');
-            personalLabel.className = 'radio-label';
-            personalLabel.innerHTML = `<input type="radio" name="drive" value="personal"> My Drive (Personal)`;
+            const personalLabel = createElement('label', { className: 'radio-label' }, [
+                createElement('input', { type: 'radio', name: 'drive', value: 'personal' }),
+                document.createTextNode(' My Drive (Personal)')
+            ]);
             this.driveList.appendChild(personalLabel);
 
         } catch (err) {
             console.error('Failed to load drives:', err);
             // Fallback to just personal
-            const personalLabel = document.createElement('label');
-            personalLabel.className = 'radio-label';
-            personalLabel.innerHTML = `<input type="radio" name="drive" value="personal"> My Drive (Personal)`;
+            const personalLabel = createElement('label', { className: 'radio-label' }, [
+                createElement('input', { type: 'radio', name: 'drive', value: 'personal' }),
+                document.createTextNode(' My Drive (Personal)')
+            ]);
             this.driveList.appendChild(personalLabel);
         } finally {
             this.loadingDrives.classList.remove('active');

@@ -4,6 +4,7 @@ import { initEvidenceBatchUI } from './evidence_batch.js';
 import { initAssessmentsView } from './assessments.js';
 import { initSetupReports } from './setup_reports.js';
 import { initReportsView } from './reports.js';
+import { createElement, setElementContents } from './utils.js';
 
 const CLIENT_ID = '767614918217-040505l01huso2e5f42bavj5magf27p8.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.rosters.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.coursework.me';
@@ -199,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (topNav) topNav.classList.add('auth-refresh-active');
 
         // Reset Admin View
-        document.getElementById('student_list').innerHTML = '<li class="placeholder-text">Please sign in to view learners.</li>';
+        setElementContents(document.getElementById('student_list'), createElement('li', { className: 'placeholder-text', textContent: 'Please sign in to view learners.' }));
     });
 
     async function handleLoginSuccess() {
@@ -313,14 +314,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadStudents() {
         if (!uiPrefs.getAccessToken()) {
-            studentListEl.innerHTML = '<li class="placeholder-text">Please sign in to view learners.</li>';
+            setElementContents(studentListEl, createElement('li', { className: 'placeholder-text', textContent: 'Please sign in to view learners.' }));
             return;
         }
 
         // Only show full loading state if list is empty
         if (studentListEl.children.length === 0 || studentListEl.querySelector('.placeholder-text')) {
             studentsLoadingEl.classList.remove('hidden');
-            studentListEl.innerHTML = '';
+            setElementContents(studentListEl);
         }
 
         try {
@@ -343,13 +344,17 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Failed to load students:", error);
             studentsLoadingEl.classList.add('hidden');
-            studentListEl.innerHTML = `<li class="placeholder-text" style="color: var(--error-text);">Error loading learners: ${error.message}</li>`;
+            setElementContents(studentListEl, createElement('li', {
+                className: 'placeholder-text',
+                style: 'color: var(--error-text);',
+                textContent: `Error loading learners: ${error.message}`
+            }));
         }
     }
 
     function renderLearnerGroups(groups) {
-        learnerGroupsListEl.innerHTML = '';
-        learnerGroupCheckboxesEl.innerHTML = '';
+        setElementContents(learnerGroupsListEl);
+        setElementContents(learnerGroupCheckboxesEl);
 
         const hasUngroupedLearners = allLearners.some(l => !l.groupIds || l.groupIds.length === 0);
 
@@ -375,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (groups.length === 0) {
-            learnerGroupCheckboxesEl.innerHTML = '<div class="placeholder-text" style="font-size: 0.8rem;">No groups available.</div>';
+            setElementContents(learnerGroupCheckboxesEl, createElement('div', { className: 'placeholder-text', style: 'font-size: 0.8rem;', textContent: 'No groups available.' }));
             return;
         }
 
@@ -488,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderStudentList() {
-        studentListEl.innerHTML = '';
+        setElementContents(studentListEl);
 
         let filteredLearners = [];
         if (selectedLearnerGroupId === 'ALL') {
@@ -500,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (filteredLearners.length === 0) {
-            studentListEl.innerHTML = '<li class="placeholder-text">No learners found in this view.</li>';
+            setElementContents(studentListEl, createElement('li', { className: 'placeholder-text', textContent: 'No learners found in this view.' }));
             return;
         }
 
@@ -555,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Optimistic UI ---
         newStudentInput.value = '';
         if (studentListEl.querySelector('.placeholder-text')) {
-            studentListEl.innerHTML = '';
+            setElementContents(studentListEl);
         }
 
         const optimisticLis = [];
@@ -633,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const courses = await classroom.fetchClassrooms();
-            selectClassroom.innerHTML = '<option value="">Choose a course...</option>';
+            setElementContents(selectClassroom, createElement('option', { value: '', textContent: 'Choose a course...' }));
 
             if (courses.length === 0) {
                 alert("No active Google Classroom courses found.");
@@ -780,7 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 AppState.invalidate();
                 alert("Project deleted successfully.");
                 // project not found
-                studentListEl.innerHTML = '<li class="placeholder-text">No learners found.</li>';
+                setElementContents(studentListEl, createElement('li', { className: 'placeholder-text', textContent: 'No learners found.' }));
             } catch (error) {
                 console.error("Failed to delete project:", error);
                 alert("Error deleting project: " + error.message);
@@ -843,7 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderGroupsList() {
-        groupsListEl.innerHTML = '';
+        setElementContents(groupsListEl);
 
         // Add "All Competencies" pseudo-group
         const allLi = document.createElement('li');
@@ -899,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderCompetenciesList() {
-        compListEl.innerHTML = '';
+        setElementContents(compListEl);
         document.getElementById('add_competency_btn').classList.remove('hidden');
 
         let filteredComps = [];
@@ -918,7 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (filteredComps.length === 0) {
-            compListEl.innerHTML = '<li class="placeholder-text">No competencies found in this view.</li>';
+            setElementContents(compListEl, createElement('li', { className: 'placeholder-text', textContent: 'No competencies found in this view.' }));
             return;
         }
 
@@ -928,7 +933,17 @@ document.addEventListener('DOMContentLoaded', () => {
             li.style.borderLeft = `4px solid ${c.color}`;
 
             const infoDiv = document.createElement('div');
-            infoDiv.innerHTML = `<strong style="${c.state === 'RETIRED' ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${c.name}</strong><br><span style="font-size: 0.8rem; color: var(--text-muted);">${c.description || ''}</span>`;
+            setElementContents(infoDiv,
+                createElement('strong', {
+                    style: c.state === 'RETIRED' ? 'text-decoration: line-through; opacity: 0.5;' : '',
+                    textContent: c.name
+                }),
+                createElement('br'),
+                createElement('span', {
+                    style: 'font-size: 0.8rem; color: var(--text-muted);',
+                    textContent: c.description || ''
+                })
+            );
 
             const editBtn = document.createElement('button');
             editBtn.className = 'material-symbols-outlined btn-icon';
@@ -994,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function populateMultiSelect(selectEl, items, selectedIds) {
-        selectEl.innerHTML = '';
+        setElementContents(selectEl);
         items.forEach(item => {
             const opt = document.createElement('option');
             opt.value = item.id;
@@ -1014,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
         populateMultiSelect(compGroupsSelect, archGroups, myGroups);
 
         if (compColorSwatches) {
-            compColorSwatches.innerHTML = '';
+            setElementContents(compColorSwatches);
             const uniqueColors = [...new Set(archCompetencies.map(c => c.color).filter(c => c))];
             if (uniqueColors.length === 0) {
                 uniqueColors.push('#94a3b8', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa');

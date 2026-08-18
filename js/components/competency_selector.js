@@ -1,3 +1,4 @@
+import { createElement, setElementContents } from '../utils.js';
 export class CompetencySelector extends HTMLElement {
     constructor() {
         super();
@@ -91,10 +92,10 @@ export class CompetencySelector extends HTMLElement {
     }
 
     render() {
-        this.innerHTML = '';
+        setElementContents(this);
         
         if (this.competencies.length === 0) {
-            this.innerHTML = '<div class="placeholder-text" style="font-size: 0.9rem;">No competencies found.</div>';
+            setElementContents(this, createElement('div', { className: 'placeholder-text', style: 'font-size: 0.9rem;', textContent: 'No competencies found.' }));
             return;
         }
 

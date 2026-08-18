@@ -1,3 +1,4 @@
+import { createElement, setElementContents } from './utils.js';
 export function initReportsView(AppState, storage) {
     const viewReports = document.getElementById('view-reports');
     const learnerListEl = document.getElementById('report_learner_list');
@@ -96,7 +97,7 @@ export function initReportsView(AppState, storage) {
 
         const templates = AppState.rootData?.['Radial Report Template'] || [];
         const currentTemplateVal = templateListEl.value;
-        templateListEl.innerHTML = '<option value="">Choose a template...</option>';
+        setElementContents(templateListEl, createElement('option', { value: '', textContent: 'Choose a template...' }));
         templates.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.id;
@@ -118,11 +119,11 @@ export function initReportsView(AppState, storage) {
 
     async function renderMatrixReport() {
         if (selectedLearnerIds.size === 0) {
-            contentArea.innerHTML = '<p class="placeholder-text">Select at least one learner to view the report.</p>';
+            setElementContents(contentArea, createElement('p', { className: 'placeholder-text', textContent: 'Select at least one learner to view the report.' }));
             return;
         }
 
-        contentArea.innerHTML = '<p class="placeholder-text">Loading...</p>';
+        setElementContents(contentArea, createElement('p', { className: 'placeholder-text', textContent: 'Loading...' }));
 
         const learners = AppState.rootData?.Student || [];
         const comps = AppState.rootData?.Competency || [];
@@ -137,7 +138,7 @@ export function initReportsView(AppState, storage) {
         }
 
         if (selectedComps.length === 0) {
-            contentArea.innerHTML = '<p class="placeholder-text">No competencies found for this group.</p>';
+            setElementContents(contentArea, createElement('p', { className: 'placeholder-text', textContent: 'No competencies found for this group.' }));
             return;
         }
 
@@ -257,29 +258,29 @@ export function initReportsView(AppState, storage) {
         });
 
         table.appendChild(tbody);
-        contentArea.innerHTML = '';
+        setElementContents(contentArea);
         contentArea.appendChild(table);
     }
 
     async function renderIndividualReport() {
         if (selectedLearnerIds.size === 0) {
-            contentArea.innerHTML = '<p class="placeholder-text">Select at least one learner to view the report.</p>';
+            setElementContents(contentArea, createElement('p', { className: 'placeholder-text', textContent: 'Select at least one learner to view the report.' }));
             return;
         }
 
         if (!selectedTemplateId) {
-            contentArea.innerHTML = '<p class="placeholder-text">Select a report template from the left.</p>';
+            setElementContents(contentArea, createElement('p', { className: 'placeholder-text', textContent: 'Select a report template from the left.' }));
             return;
         }
 
-        contentArea.innerHTML = '<p class="placeholder-text">Loading...</p>';
+        setElementContents(contentArea, createElement('p', { className: 'placeholder-text', textContent: 'Loading...' }));
 
         const learners = AppState.rootData?.Student || [];
         const templates = AppState.rootData?.['Radial Report Template'] || [];
         const template = templates.find(t => t.id === selectedTemplateId);
 
         if (!template) {
-            contentArea.innerHTML = '<p class="placeholder-text">Template not found.</p>';
+            setElementContents(contentArea, createElement('p', { className: 'placeholder-text', textContent: 'Template not found.' }));
             return;
         }
 
@@ -329,7 +330,7 @@ export function initReportsView(AppState, storage) {
             }
         }
 
-        contentArea.innerHTML = '';
+        setElementContents(contentArea);
         const grid = document.createElement('div');
         grid.className = 'card-grid';
 

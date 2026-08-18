@@ -1,3 +1,4 @@
+import { createElement, setElementContents } from '../utils.js';
 export class CompetencyGroupSelector extends HTMLElement {
     constructor() {
         super();
@@ -28,7 +29,7 @@ export class CompetencyGroupSelector extends HTMLElement {
     }
 
     render() {
-        this.innerHTML = '';
+        setElementContents(this);
         const select = document.createElement('select');
         select.className = 'select-filter';
         select.style.width = '100%';

@@ -1,3 +1,5 @@
+import { createElement, setElementContents } from '../utils.js';
+
 export class LoginState extends HTMLElement {
     constructor() {
         super();
@@ -123,7 +125,7 @@ export class LoginState extends HTMLElement {
         this.btnLogin.classList.remove('hidden');
         
         this.userAvatar.classList.add('hidden');
-        this.userAvatar.innerHTML = '<span class="material-symbols-outlined">person</span>';
+        setElementContents(this.userAvatar, createElement('span', { className: 'material-symbols-outlined', textContent: 'person' }));
         this.userAvatar.setAttribute('title', 'Logged in');
         this.userAvatar.style.width = '32px';
         this.userAvatar.style.padding = '0';
@@ -142,12 +144,15 @@ export class LoginState extends HTMLElement {
 
         if (email) {
             this.userAvatar.setAttribute('title', `Logged in as ${email}`);
-            this.userAvatar.innerHTML = `<span style="font-size: 0.8rem; font-weight: 500; padding: 0 0.5rem;">${email.split('@')[0]}</span>`;
+            setElementContents(this.userAvatar, createElement('span', {
+                style: 'font-size: 0.8rem; font-weight: 500; padding: 0 0.5rem;',
+                textContent: email.split('@')[0]
+            }));
             this.userAvatar.style.width = 'auto';
             this.userAvatar.style.padding = '0 0.25rem';
         } else {
             this.userAvatar.setAttribute('title', 'Logged in');
-            this.userAvatar.innerHTML = '<span class="material-symbols-outlined">person</span>';
+            setElementContents(this.userAvatar, createElement('span', { className: 'material-symbols-outlined', textContent: 'person' }));
             this.userAvatar.style.width = '32px';
             this.userAvatar.style.padding = '0';
         }

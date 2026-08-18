@@ -1,3 +1,4 @@
+import { createElement, setElementContents } from './utils.js';
 export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
     const courseSelect = document.getElementById('evidence_classroom_selector');
     const assignSelect = document.getElementById('evidence_assignment_selector');
@@ -26,7 +27,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
     async function loadClassrooms() {
         try {
             courses = await classroom.fetchClassrooms();
-            courseSelect.innerHTML = '<option value="">-- No Classroom Sync --</option>';
+            setElementContents(courseSelect, createElement('option', { value: '', textContent: '-- No Classroom Sync --' }));
             courses.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.id;
@@ -41,12 +42,12 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
     courseSelect.addEventListener('change', async (e) => {
         const courseId = e.target.value;
         if (!courseId) {
-            assignSelect.innerHTML = '<option value="">-- Select Course First --</option>';
+            setElementContents(assignSelect, createElement('option', { value: '', textContent: '-- Select Course First --' }));
             assignSelect.disabled = true;
             return;
         }
 
-        assignSelect.innerHTML = '<option value="">Loading...</option>';
+        setElementContents(assignSelect, createElement('option', { value: '', textContent: 'Loading...' }));
         assignSelect.disabled = true;
 
         try {
@@ -55,7 +56,10 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
                 courseworkCache[courseId] = cw;
             }
 
-            assignSelect.innerHTML = '<option value="">-- Select Assignment --</option><option value="NEW">Create New Assignment...</option>';
+            setElementContents(assignSelect, 
+                createElement('option', { value: '', textContent: '-- Select Assignment --' }),
+                createElement('option', { value: 'NEW', textContent: 'Create New Assignment...' })
+            );
             courseworkCache[courseId].forEach(cw => {
                 const opt = document.createElement('option');
                 opt.value = cw.id;
@@ -66,7 +70,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             assignSelect.disabled = false;
         } catch (error) {
             console.error("Failed to load coursework", error);
-            assignSelect.innerHTML = '<option value="">Error loading</option>';
+            setElementContents(assignSelect, createElement('option', { value: '', textContent: 'Error loading' }));
         }
     });
 
@@ -142,7 +146,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
             tableHeadRow.appendChild(th);
         });
 
-        tbody.innerHTML = '';
+        setElementContents(tbody);
 
         if (selectedLearnerIds.size === 0) {
             const tr = document.createElement('tr');

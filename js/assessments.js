@@ -1,3 +1,5 @@
+import { createElement, setElementContents } from './utils.js';
+
 export function initAssessmentsView(AppState, uiPrefs, storage) {
     const viewAssessments = document.getElementById('view-assessments');
     const learnerListEl = document.getElementById('assess_learner_list');
@@ -217,16 +219,16 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
 
 
     function renderAssessmentGrid() {
-        gridContainer.innerHTML = '';
+        setElementContents(gridContainer);
 
         if (selectedLearnerIds.size === 0) {
-            gridContainer.innerHTML = '<div id="assess_initial_placeholder" class="placeholder-text card">Select learners from the left to begin.</div>';
+            setElementContents(gridContainer, createElement('div', { id: 'assess_initial_placeholder', className: 'placeholder-text card', textContent: 'Select learners from the left to begin.' }));
             return;
         }
 
         const comps = AppState.rootData?.Competency || [];
         if (comps.length === 0) {
-            gridContainer.innerHTML = '<div id="assess_initial_placeholder" class="placeholder-text card">No competencies found in the system.</div>';
+            setElementContents(gridContainer, createElement('div', { id: 'assess_initial_placeholder', className: 'placeholder-text card', textContent: 'No competencies found in the system.' }));
             return;
         }
 
@@ -237,7 +239,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             section.style.marginBottom = '24px';
             section.style.padding = '0';
             section.style.padding = '0';
-            section.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">Loading...</div>';
+            setElementContents(section, createElement('div', { style: 'padding: 16px; text-align: center; color: var(--text-muted);', textContent: 'Loading...' }));
 
             gridContainer.appendChild(section);
 
@@ -263,7 +265,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         section.style.marginBottom = '24px';
         section.style.padding = '0';
         section.style.padding = '0';
-        section.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">Loading...</div>';
+        setElementContents(section, createElement('div', { style: 'padding: 16px; text-align: center; color: var(--text-muted);', textContent: 'Loading...' }));
 
         gridContainer.appendChild(section);
 
@@ -271,7 +273,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         if (comps.length === 0) {
             section.remove();
             if (gridContainer.children.length === 0) {
-                gridContainer.innerHTML = '<div id="assess_initial_placeholder" class="placeholder-text card">No competencies found in the system.</div>';
+                setElementContents(gridContainer, createElement('div', { id: 'assess_initial_placeholder', className: 'placeholder-text card', textContent: 'No competencies found in the system.' }));
             }
             return;
         }
@@ -290,7 +292,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             section.remove();
         }
         if (selectedLearnerIds.size === 0) {
-            gridContainer.innerHTML = '<div id="assess_initial_placeholder" class="placeholder-text card">Select learners from the left to begin.</div>';
+            setElementContents(gridContainer, createElement('div', { id: 'assess_initial_placeholder', className: 'placeholder-text card', textContent: 'Select learners from the left to begin.' }));
         }
     }
 
@@ -570,7 +572,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
                         const isEdit = !!authorItem;
                         
                         const actionBtn = document.createElement('span');
-                        actionBtn.innerHTML = isEdit ? '&#9998;' : '&#43;'; // pencil or plus
+                        actionBtn.textContent = isEdit ? '✎' : '+'; // pencil or plus
                         actionBtn.style.cursor = 'pointer';
                         actionBtn.style.padding = '0 6px';
                         actionBtn.style.opacity = '0.7';
@@ -627,8 +629,8 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             const stateKey = `${learnerId}_${comp.id}`;
 
             function renderFormUI() {
-                compBot.innerHTML = '';
-                btnRow.innerHTML = '';
+                setElementContents(compBot);
+                setElementContents(btnRow);
                 
                 let currentState = unsavedAssessments.get(stateKey);
                 
@@ -672,25 +674,31 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
                 let currentRating = currentState.rating !== undefined ? currentState.rating : undefined;
                 
                 if (currentState.assessmentGroupId) {
-                    const linkNotice = document.createElement('div');
-                    linkNotice.style.fontSize = '0.75rem';
-                    linkNotice.style.color = 'var(--text-muted)';
-                    const noticeText = currentState._isEdit ? '&#9998; Editing your assessment in this group' : '&#128279; Linking to Assessment Group';
-                    linkNotice.innerHTML = `<em>${noticeText}</em> <a href="#" style="color: var(--primary); text-decoration: none; margin-left: 8px;">(Cancel)</a>`;
-                    linkNotice.querySelector('a').onclick = (e) => {
-                        e.preventDefault();
-                        explicitCancels.add(stateKey);
-                        currentState.id = undefined;
-                        currentState.assessmentGroupId = undefined;
-                        currentState._isEdit = undefined;
-                        if (currentRating === undefined && !currentState.summativeNote && !currentState.guidance) {
-                            unsavedAssessments.delete(stateKey);
-                        } else {
-                            unsavedAssessments.set(stateKey, currentState);
-                        }
-                        updateGlobalSaveBtn();
-                        renderFormUI();
-                    };
+                    const noticeText = currentState._isEdit ? '✎ Editing your assessment in this group' : '🔗 Linking to Assessment Group';
+                    const linkNotice = createElement('div', {
+                        style: 'font-size: 0.75rem; color: var(--text-muted);'
+                    }, [
+                        createElement('em', { textContent: noticeText }),
+                        document.createTextNode(' '),
+                        createElement('a', {
+                            href: '#',
+                            style: 'color: var(--primary); text-decoration: none; margin-left: 8px;',
+                            textContent: '(Cancel)',
+                            onclick: (e) => {
+                                e.preventDefault();
+                                explicitCancels.add(stateKey);
+                                currentState.id = undefined;
+                                currentState.assessmentGroupId = undefined;
+                                currentState._isEdit = undefined;
+                                if (currentRating === undefined && !currentState.summativeNote && !currentState.guidance) {
+                                    unsavedAssessments.delete(stateKey);
+                                } else {
+                                    unsavedAssessments.set(stateKey, currentState);
+                                }
+                                renderAssessmentGrid(currentGroupIds, currentStudents);
+                            }
+                        })
+                    ]);
                     compBot.appendChild(linkNotice);
                 }
 
@@ -789,7 +797,10 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
 
         if (addedCount === 0) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td style="padding: 16px; text-align: center; color: var(--text-muted);">No matching competencies or recent observations found for this learner.</td>`;
+            setElementContents(tr, createElement('td', {
+                style: 'padding: 16px; text-align: center; color: var(--text-muted);',
+                textContent: 'No matching competencies or recent observations found for this learner.'
+            }));
             tbody.appendChild(tr);
         }
 
@@ -809,7 +820,6 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             title = ev && ev.name ? ev.name : 'Unknown Evidence';
         }
         obsModalTitle.textContent = title;
-        obsModalContent.innerHTML = '';
 
         const ratingConf = isAssessment ? summativeRatings.find(r => r.val === obs.rating) : observationRatings[obs.rating];
 
@@ -826,29 +836,43 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             else ratingPrefix = 'Rated';
         }
 
-        let html = `
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <div style="color: ${ratingConf ? ratingConf.color : 'inherit'}; font-weight: 600; font-size: 1.05rem;">
-                    ${ratingPrefix} ${comp.name}
-                </div>
-                <hr style="border: 0; border-top: 1px solid var(--border); margin: 4px 0;" />
-        `;
+        const modalContainer = createElement('div', {
+            style: 'display: flex; flex-direction: column; gap: 8px;'
+        }, [
+            createElement('div', {
+                style: `color: ${ratingConf ? ratingConf.color : 'inherit'}; font-weight: 600; font-size: 1.05rem;`,
+                textContent: `${ratingPrefix} ${comp.name}`
+            }),
+            createElement('hr', { style: 'border: 0; border-top: 1px solid var(--border); margin: 4px 0;' })
+        ]);
 
         if (isAssessment) {
-            html += `
-                <div>${obs.summativeNote ? obs.summativeNote : '<em>No notes</em>'}</div>
-                ${obs.guidance ? `<div><strong>Guidance:</strong> ${obs.guidance}</div>` : ''}
-                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"> - ${obs.assessorEmail || 'Unknown'} on ${new Date(obs.timestamp).toLocaleString()}</div>
-            `;
+            modalContainer.appendChild(createElement('div', {
+                innerHTML: obs.summativeNote ? '' : '<em>No notes</em>',
+                textContent: obs.summativeNote ? obs.summativeNote : ''
+            }));
+            if (obs.guidance) {
+                modalContainer.appendChild(createElement('div', {}, [
+                    createElement('strong', { textContent: 'Guidance: ' }),
+                    document.createTextNode(obs.guidance)
+                ]));
+            }
+            modalContainer.appendChild(createElement('div', {
+                style: 'font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;',
+                textContent: ` - ${obs.assessorEmail || 'Unknown'} on ${new Date(obs.timestamp).toLocaleString()}`
+            }));
         } else {
-            html += `
-                <div>${ev && ev.note ? ev.note : '<em>No notes</em>'}</div>
-                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"> - ${obs.authorEmail || 'Unknown'} on ${new Date(obs.timestamp).toLocaleString()}</div>
-            `;
+            modalContainer.appendChild(createElement('div', {
+                innerHTML: (ev && ev.note) ? '' : '<em>No notes</em>',
+                textContent: (ev && ev.note) ? ev.note : ''
+            }));
+            modalContainer.appendChild(createElement('div', {
+                style: 'font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;',
+                textContent: ` - ${obs.authorEmail || 'Unknown'} on ${new Date(obs.timestamp).toLocaleString()}`
+            }));
         }
 
-        html += `</div>`;
-        obsModalContent.innerHTML = html;
+        setElementContents(obsModalContent, modalContainer);
 
         obsModal.style.display = 'flex';
         obsModal.classList.remove('hidden');

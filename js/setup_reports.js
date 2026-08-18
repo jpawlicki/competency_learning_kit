@@ -1,3 +1,4 @@
+import { createElement, setElementContents } from './utils.js';
 export function initSetupReports(AppState, storage) {
     const listEl = document.getElementById('report_templates_list');
     const btnAdd = document.getElementById('add_report_template_btn');
@@ -36,9 +37,9 @@ export function initSetupReports(AppState, storage) {
     // We can expose a refresh method if needed, but for now we just observe
 
     function renderList() {
-        listEl.innerHTML = '';
+        setElementContents(listEl);
         if (reportTemplates.length === 0) {
-            listEl.innerHTML = '<li class="placeholder-text">No templates found.</li>';
+            setElementContents(listEl, createElement('li', { className: 'placeholder-text', textContent: 'No templates found.' }));
             return;
         }
 
@@ -151,7 +152,7 @@ export function initSetupReports(AppState, storage) {
     }
 
     function renderCompetencySelector() {
-        compSelectorEl.innerHTML = '';
+        setElementContents(compSelectorEl);
 
         // Render ungrouped competencies first
         const ungrouped = allCompetencies.filter(c => !compGroups.some(g => g.competencyIds.includes(c.id)));
