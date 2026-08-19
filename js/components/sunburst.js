@@ -1,4 +1,4 @@
-import { createElement, setElementContents } from '../utils.js';
+import { setElementContents } from '../utils.js';
 export class CLKSunburst extends HTMLElement {
     constructor() {
         super();
@@ -290,7 +290,6 @@ export class CLKSunburst extends HTMLElement {
         const cy = height / 2;
 
         const maxOuterRadius = Math.min(cx, cy) * 0.95;
-        let effectiveOuterRadius = this.outerRadius;
         
         // Scale down if it doesn't fit
         const scale = this.outerRadius > maxOuterRadius ? maxOuterRadius / this.outerRadius : 1;
@@ -601,7 +600,7 @@ export class CLKSunburst extends HTMLElement {
         }
     }
 
-    handleDragLeave(e) {
+    handleDragLeave() {
         if (this.mode === 'report') return;
         this.isDragging = false;
         this.updateDragIndicator();

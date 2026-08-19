@@ -10,357 +10,22 @@
 /**
  * Create a new storage instance hooked up to Google Drive.
  * @param {UIPrefs} [uiPrefs] - UIPrefs instance for component ID & token access composition.
- * @returns {StorageGoogleDrive}
+ * @returns {Storage}
  */
 export function createStorageGoogleDrive(uiPrefs = createUIPrefsBrowserStorage()) {
-  return new StorageGoogleDrive(uiPrefs);
+  return new Storage(uiPrefs);
 }
 
 /**
  * Create a new UIPrefs instance stored in browser storage.
- * @returns {UIPrefsBrowserStorage}
+ * @returns {UIPrefs}
  */
 export function createUIPrefsBrowserStorage() {
-  return new UIPrefsBrowserStorage();
+  return new UIPrefs();
 }
 
 export class Storage {
-  // Block direct instantiation.
-  constructor() {
-    if (this.constructor === Storage) {
-      throw new Error("Do not instantiate a Storage directly - use a factory instead.");
-    }
-  }
-
-  /**
-   * Create the root data folder, Root Data spreadsheet, and Learners folder in Google Drive.
-   * @param {string} institutionName - Name of the institution.
-   * @param {string} [driveId] - Optional Google Drive ID (for Shared Drives).
-   * @returns {Promise<Object>} Created component IDs (folderId, rootDataId, learnersFolderId).
-   */
-  initializeData(institutionName, driveId = null) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Fetch available Shared Drives the user has access to.
-   * @returns {Promise<Array<Object>>} List of drive objects {id, name}.
-   */
-  getAvailableDrives() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Recursively list all files and subfolders under the project root folder for deletion preview.
-   * @returns {Promise<Array<Object>>} List of file objects to be deleted.
-   */
-  scanProjectForDeletion() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Permanently delete the project root folder and all contained files from Google Drive.
-   * @returns {Promise<void>}
-   */
-  deleteProject() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Read the entire root datastore into memory; returns the datastore as a dictionary.
-   * Automatically searches for and locates the project root folder and Root Data spreadsheet in Google Drive if not already resolved.
-   * Dictionary keys correspond to semantic data types:
-   * - Comment
-   * - Institution Name (singleton)
-   * - Global Write Permission
-   * - Global Read Permission
-   * - Student
-   * - Google Classroom
-   * - Competency
-   * - Competency Group
-   * Non-singleton rows are valued as an array even if they have only one value.
-   * Returns null if the project root folder or Root Data spreadsheet does not exist.
-   * @returns {Promise<Object|null>} Root data dictionary or null if uninitialized.
-   */
-  readRootData() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Read the entire learner datastore for learner `id` into memory, returning it as a dictionary.
-   * Dictionary keys correspond to semantic data types:
-   * - Comment
-   * - Student Name (singleton)
-   * - Read Permission
-   * - Write Permission
-   * - Evidence
-   * - Observation
-   * - Assessment
-   * Non-singleton rows are valued as an array even if they have only one value.
-   * @param {string} id - Student Learner Data spreadsheet ID.
-   * @returns {Promise<Object>} Learner data dictionary.
-   */
-  readLearnerData(id) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Add a new learner to the system.
-   * Creates a student folder, Learner Data spreadsheet, Artifacts folder, and appends a row to Root Data.
-   * @param {string} name - Student's full name.
-   * @param {string} [nickname] - Optional student nickname.
-   * @param {string} [classroomId] - Optional linked Google Classroom student ID.
-   * @param {Array<string>} [groupIds] - Optional array of learner group IDs.
-   * @returns {Promise<Object>} Created student metadata.
-   */
-  addLearner(name, nickname = '', classroomId = '', groupIds = []) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Add a new learner group to Root Data.
-   * @param {string} name - Group name.
-   * @returns {Promise<string>} Created group ID.
-   */
-  updateLearnerGroups(groups) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Delete a learner from the system by their name.
-   * Deletes the student folder from Google Drive and removes their row from Root Data.
-   * @param {string} name - Student's full name.
-   * @returns {Promise<void>}
-   */
-  deleteLearner(name) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Update the institution name for the project.
-   * @param {string} newName - The new institution name.
-   * @returns {Promise<void>}
-   */
-  updateInstitutionName(newName) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Link an existing learner to a Google Classroom user ID.
-   * @param {string} name - Student's full name.
-   * @param {string} classroomId - Google Classroom user ID.
-   * @returns {Promise<void>}
-   */
-  linkLearnerToClassroom(name, classroomId) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Overwrite / save all competencies in Root Data while preserving non-competency rows.
-   * @param {Array<Object>} competencies - List of competency objects to store.
-   * @returns {Promise<void>}
-   */
-  saveCompetencies(competencies) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Add a single new competency to Root Data.
-   * @param {Object} competency - Competency object properties.
-   * @returns {Promise<Object>} Created competency metadata.
-   */
-  addCompetency(competency) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Retire an existing competency in Root Data by marking its state as 'RETIRED'.
-   * @param {string} competencyId - Competency ID to retire.
-   * @returns {Promise<boolean>} True if found and retired, false otherwise.
-   */
-  retireCompetency(competencyId) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Overwrite / save linked Google Classroom IDs in Root Data while preserving other rows.
-   * @param {Array<string>} classroomIds - Set or array of Classroom course IDs or course objects.
-   * @returns {Promise<void>}
-   */
-  saveLinkedClassrooms(classroomIds) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Add an evidence entry, associated observations, and upload/copy artifact files into a learner's datastore.
-   * @param {string} learnerId - Student Learner Data spreadsheet ID.
-   * @param {Object} evidence - Evidence details (id, name, note, timestamp, authorEmail).
-   * @param {Array<Object>} [observations] - List of observation objects (competencyId, rating, timestamp).
-   * @param {Array<File>} [files] - Optional array of artifact files to upload and link.
-   * @returns {Promise<void>}
-   */
-  addEvidenceAndObservations(learnerId, evidence, observations = [], files = []) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Add a summative assessment entry for a learner's competency.
-   * @param {string} learnerId - Student Learner Data spreadsheet ID.
-   * @param {Object} assessment - Assessment details (id, competencyId, assessorEmail, rating, summativeNote, guidance, timestamp).
-   * @returns {Promise<void>}
-   */
-  addAssessment(learnerId, assessment) {
-    throw new Error("Not implemented in superclass.");
-  }
-}
-
-export class UIPrefs {
-  // Block direct instantiation.
-  constructor() {
-    if (this.constructor === UIPrefs) {
-      throw new Error("Do not instantiate a UIPrefs directly - use a factory instead.");
-    }
-  }
-
-  /**
-   * Retrieve active Google OAuth access token.
-   * @returns {string|null} Access token string or null.
-   */
-  getAccessToken() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Store active Google OAuth access token.
-   * @param {string} token - Access token string.
-   */
-  setAccessToken(token) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Clear active Google OAuth access token.
-   */
-  clearAccessToken() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Retrieve stored user email hint for silent token refetch.
-   * @returns {string|null} User email string or null.
-   */
-  getUserEmail() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Store user email hint for silent token refetch.
-   * @param {string} email - User email address.
-   */
-  setUserEmail(email) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Clear stored user email hint.
-   */
-  clearUserEmail() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Initialize a GIS token client with automatic token and email state updates.
-   * @param {Object} oauth2 - google.accounts.oauth2 namespace object.
-   * @param {Object} config - Configuration object { clientId, scope, callback }.
-   * @returns {Object} GIS token client instance.
-   */
-  initTokenClient(oauth2, config) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Request or silently refetch an access token via Google Identity Services tokenClient.
-   * @param {Object} tokenClient - GIS token client instance.
-   * @param {Object} [options={}] - Options: { interactive: boolean, prompt: string, hint: string }.
-   */
-  requestAccessToken(tokenClient, options) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Retrieve cached project component IDs (root folder ID, Root Data spreadsheet ID, Learners folder ID).
-   * @returns {Object|null} Object containing folderId, rootDataId, learnersFolderId, or null if none stored.
-   */
-  getProjectComponentIds() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Store cached project component IDs.
-   * @param {Object} ids - Component IDs object { folderId, rootDataId, learnersFolderId }.
-   */
-  setProjectComponentIds(ids) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Clear stored project component IDs.
-   */
-  clearProjectComponentIds() {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Record usage of competency IDs and assignment mapping.
-   * @param {Array<string>} competencyIds - List of competency IDs used.
-   * @param {string} evidenceName - Assignment or evidence name.
-   */
-  recordCompetencyUsage(competencyIds, evidenceName) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Retrieve competency IDs used within a recent time window.
-   * @param {number} [timeWindowMs] - Time window in milliseconds (default 1 year).
-   * @returns {Array<string>} List of recent competency IDs.
-   */
-  getRecentCompetencyIds(timeWindowMs) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Retrieve suggested competency IDs associated with a specific evidence/assignment name.
-   * @param {string} evidenceName - Evidence or assignment title.
-   * @returns {Array<string>} List of mapped competency IDs.
-   */
-  getCompetenciesForAssignment(evidenceName) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Record interaction timestamps for student IDs.
-   * @param {Array<string>} studentIds - List of student IDs.
-   */
-  recordStudentUsage(studentIds) {
-    throw new Error("Not implemented in superclass.");
-  }
-
-  /**
-   * Retrieve student IDs accessed within a recent time window.
-   * @param {number} [timeWindowMs] - Time window in milliseconds (default 1 year).
-   * @returns {Set<string>} Set of recent student IDs.
-   */
-  getRecentStudentIds(timeWindowMs) {
-    throw new Error("Not implemented in superclass.");
-  }
-}
-
-
-// IMPLEMENTATIONS
-
-export class StorageGoogleDrive extends Storage {
   constructor(uiPrefs = createUIPrefsBrowserStorage()) {
-    super();
     this.uiPrefs = uiPrefs;
     this.folderId = '';
     this.rootDataId = '';
@@ -757,7 +422,7 @@ export class StorageGoogleDrive extends Storage {
     return learnerDict;
   }
 
-  async addLearner(name, nickname = '', classroomId = '', groupIds = []) {
+  async addLearner(name, classroomId = '', groupIds = []) {
     const components = await this.resolveProjectComponents();
     if (!components || !components.learnersFolderId || !components.rootDataId) {
       throw new Error("CLK project structure not initialized.");
@@ -805,7 +470,7 @@ export class StorageGoogleDrive extends Storage {
       })
     });
 
-    const studentRow = ['Student', name, studentFolder.id, learnerData.id, artifactsFolder.id, nickname || name, classroomId, groupIds.join(';')];
+    const studentRow = ['Student', name, studentFolder.id, learnerData.id, artifactsFolder.id, name, classroomId, groupIds.join(';')];
     await this.sheetsRequest(components.rootDataId, '/values/A1:append?valueInputOption=USER_ENTERED', {
       method: 'POST',
       body: JSON.stringify({ values: [studentRow] })
@@ -816,7 +481,7 @@ export class StorageGoogleDrive extends Storage {
       folderId: studentFolder.id,
       learnerDataId: learnerData.id,
       artifactsId: artifactsFolder.id,
-      nickname: nickname || name,
+      nickname: name,
       classroomId: classroomId,
       groupIds: groupIds
     };
@@ -843,13 +508,20 @@ export class StorageGoogleDrive extends Storage {
         }
     }
 
-    const newRows = [...existingRows];
-    newRows.splice(studentRowIndex, 1);
-
-    await this.sheetsRequest(components.rootDataId, '/values/A:Z:clear', { method: 'POST' });
-    await this.sheetsRequest(components.rootDataId, '/values/A1?valueInputOption=USER_ENTERED', {
-      method: 'PUT',
-      body: JSON.stringify({ values: newRows })
+    await this.sheetsRequest(components.rootDataId, ':batchUpdate', {
+      method: 'POST',
+      body: JSON.stringify({
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId: 0,
+              dimension: 'ROWS',
+              startIndex: studentRowIndex,
+              endIndex: studentRowIndex + 1
+            }
+          }
+        }]
+      })
     });
   }
 
@@ -1191,9 +863,8 @@ export class StorageGoogleDrive extends Storage {
   }
 }
 
-export class UIPrefsBrowserStorage extends UIPrefs {
+export class UIPrefs {
   constructor() {
-    super();
     this._accessToken = '';
     this.USER_EMAIL_KEY = 'clk_user_email';
     this.COMPETENCY_USAGE_KEY = 'clk_competency_usage';

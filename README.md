@@ -87,8 +87,8 @@ The data is organized in Google Drive as follows:
       - `Root Data` (a spreadsheet)
       - `Learners` (a folder)
           - `Ruby Bridges` (example; a student's folder)
-              - `Learner Data` (a spreadsheet)
-              - `Artifacts` (a folder)
+              - `Ruby Bridges (Learner Data)` (a spreadsheet)
+              - `Ruby Bridges (Artifacts)` (a folder)
                   - `Book Report - Charlotte's Web` (a document)
 
 ### The Root Data Spreadsheet

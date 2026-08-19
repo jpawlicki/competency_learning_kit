@@ -4,6 +4,7 @@ Contributors (human or otherwise) should follow these guidelines:
 
   - Always review the README.md file. The README contains up-to-date specifications of data structures and the overall project design.
   - Avoid nullability where possible. Null return values are generally permitted but null inputs are not.
+  - Avoid default and optional arguments where possible.
   - Avoid polymorphism where possible. We prefer strict and documented type assumptions.
      - Generally, it's not necessary to check that the caller provided the right types, and instead rely on JavaScript duck typing.
   - Prefer dependency injection and composition to inheritance or globals.

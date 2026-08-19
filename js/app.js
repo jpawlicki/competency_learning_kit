@@ -588,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            await Promise.all(names.map(name => storage.addLearner(name, '', '', selectedGroupIds)));
+            await Promise.all(names.map(name => storage.addLearner(name, '', selectedGroupIds)));
             AppState.invalidate();
             await loadStudents();
             // Clear checkboxes

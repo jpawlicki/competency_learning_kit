@@ -1,4 +1,4 @@
-import { createElement, setElementContents } from '../utils.js';
+import { setElementContents } from '../utils.js';
 export class CompetencyGroupSelector extends HTMLElement {
     constructor() {
         super();

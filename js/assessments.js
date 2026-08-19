@@ -34,7 +34,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             saveAllBtn.textContent = 'Saving...';
 
             let errors = 0;
-            for (const [key, assess] of unsavedAssessments.entries()) {
+            for (const assess of unsavedAssessments.values()) {
                 const learnerId = assess.learnerId;
                 delete assess.learnerId; // remove temp property
                 try {
@@ -100,7 +100,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
 
     const assessGroupSelect = document.getElementById('assess_group_select');
     if (assessGroupSelect) {
-        assessGroupSelect.addEventListener('change', (e) => {
+        assessGroupSelect.addEventListener('change', () => {
             if (unsavedAssessments.size > 0) {
                 if (!confirm("You have unsaved changes. Change group and lose changes?")) {
                     // Reverting group select is hard without state tracking, but let's just warn for now
@@ -506,7 +506,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
                         pill.appendChild(dateSpan);
 
                         pill.addEventListener('click', () => {
-                            showObservationDetails(item, ev, comp, learnerId);
+                            showObservationDetails(item, ev, comp);
                         });
                         
                         timelineDiv.appendChild(pill);
@@ -559,7 +559,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
                             pill.appendChild(dateSpan);
 
                             pill.addEventListener('click', () => {
-                                showObservationDetails(item, null, comp, learnerId);
+                                showObservationDetails(item, null, comp);
                             });
                             
                             stack.appendChild(pill);
@@ -810,7 +810,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
         return section;
     }
 
-    function showObservationDetails(obs, ev, comp, learnerId) {
+    function showObservationDetails(obs, ev, comp) {
         const isAssessment = ev === null;
 
         let title = '';
@@ -848,8 +848,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
 
         if (isAssessment) {
             modalContainer.appendChild(createElement('div', {
-                innerHTML: obs.summativeNote ? '' : '<em>No notes</em>',
-                textContent: obs.summativeNote ? obs.summativeNote : ''
+                textContent: obs.summativeNote || ''
             }));
             if (obs.guidance) {
                 modalContainer.appendChild(createElement('div', {}, [
@@ -863,8 +862,7 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
             }));
         } else {
             modalContainer.appendChild(createElement('div', {
-                innerHTML: (ev && ev.note) ? '' : '<em>No notes</em>',
-                textContent: (ev && ev.note) ? ev.note : ''
+                textContent: (ev && ev.note) || ''
             }));
             modalContainer.appendChild(createElement('div', {
                 style: 'font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;',

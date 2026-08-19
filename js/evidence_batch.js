@@ -74,7 +74,7 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
         }
     });
 
-    assignSelect.addEventListener('change', (e) => {
+    assignSelect.addEventListener('change', () => {
         const selected = assignSelect.selectedOptions[0];
         if (selected && selected.value !== 'NEW' && selected.value !== '') {
             nameInput.value = selected.dataset.title || selected.textContent;
