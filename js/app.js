@@ -14,7 +14,8 @@ const storage = createStorageGoogleDrive(uiPrefs);
 const classroom = createGoogleClassroom(uiPrefs);
 let tokenClient;
 
-const AppState = {
+const AppState = new EventTarget();
+Object.assign(AppState, {
     rootData: null,
     isLoaded: false,
     isLoading: false,
@@ -27,20 +28,27 @@ const AppState = {
         this.isLoading = true;
         const loader = document.getElementById('global-loading');
         if (loader) loader.classList.remove('hidden');
+        const overlay = document.getElementById('data-loading-overlay');
+        if (overlay) overlay.classList.remove('hidden');
+        this.dispatchEvent(new Event('load-start'));
 
         this.loadPromise = storage.readRootData().then(data => {
             this.rootData = data;
             this.isLoaded = true;
             this.isLoading = false;
             if (loader) loader.classList.add('hidden');
+            if (overlay) overlay.classList.add('hidden');
             if (typeof populateGlobalFilter === 'function') {
                 populateGlobalFilter(data['Competency Group'] || []);
             }
+            this.dispatchEvent(new Event('load-complete'));
             return data;
         }).catch(e => {
             this.isLoading = false;
             this.loadPromise = null;
             if (loader) loader.classList.add('hidden');
+            if (overlay) overlay.classList.add('hidden');
+            this.dispatchEvent(new Event('load-error'));
             throw e;
         });
         return this.loadPromise;
@@ -49,8 +57,9 @@ const AppState = {
         this.rootData = null;
         this.isLoaded = false;
         this.loadPromise = null;
+        this.dispatchEvent(new Event('invalidated'));
     }
-};
+});
 
 
 
@@ -142,16 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupWizard.addEventListener('setup-complete', () => {
             updateSettingsUIState(true);
             AppState.invalidate();
-            AppState.load().then(() => {
-                initEvidenceBatchUI(AppState, storage, classroom, uiPrefs);
-                initAssessmentsView(AppState, uiPrefs, storage);
-                initSetupReports(AppState, storage);
-                initReportsView(AppState, storage);
-                const activeAdminTab = document.querySelector('.tab-btn[data-admin-tab="students"]');
-                if (activeAdminTab && activeAdminTab.classList.contains('active') && !document.getElementById('view-admin').classList.contains('hidden')) {
-                    loadStudents();
-                }
-            });
+            AppState.load();
         });
     }
 
@@ -189,18 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loginState.addEventListener('logout-requested', () => {
-
-        AppState.invalidate();
         uiPrefs.clearAccessToken();
         uiPrefs.clearUserEmail();
         uiPrefs.clearProjectComponentIds();
-
-        loginState.setLoggedOut();
-        if (authRefreshOverlay) authRefreshOverlay.classList.remove('hidden');
-        if (topNav) topNav.classList.add('auth-refresh-active');
-
-        // Reset Admin View
-        setElementContents(document.getElementById('student_list'), createElement('li', { className: 'placeholder-text', textContent: 'Please sign in to view learners.' }));
+        window.location.reload();
     });
 
     async function handleLoginSuccess() {
@@ -231,17 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateSettingsUIState(true);
 
                 AppState.invalidate();
-                AppState.load().then(() => {
-                    initEvidenceBatchUI(AppState, storage, classroom, uiPrefs);
-                    initAssessmentsView(AppState, uiPrefs, storage);
-                    initSetupReports(AppState, storage);
-                    initReportsView(AppState, storage);
-                    // If we are currently on the Admin -> Students tab, load the data
-                    const activeAdminTab = document.querySelector('.tab-btn[data-admin-tab="students"]');
-                    if (activeAdminTab && activeAdminTab.classList.contains('active') && !document.getElementById('view-admin').classList.contains('hidden')) {
-                        loadStudents();
-                    }
-                });
+                AppState.load();
             } else {
                 // project not found
                 updateSettingsUIState(false);
@@ -1125,4 +1107,20 @@ document.addEventListener('DOMContentLoaded', () => {
             archLoadingEl.classList.add('hidden');
         }
     }
+
+    // --- One-Time Module Initialization ---
+    initEvidenceBatchUI(AppState, storage, classroom, uiPrefs);
+    initAssessmentsView(AppState, uiPrefs, storage);
+    initSetupReports(AppState, storage);
+    initReportsView(AppState, storage);
+
+    AppState.addEventListener('load-complete', () => {
+        const activeAdminTab = document.querySelector('.tab-btn.active')?.dataset?.adminTab;
+        if (!document.getElementById('view-admin').classList.contains('hidden')) {
+            if (activeAdminTab === 'students') loadStudents();
+            if (activeAdminTab === 'groups') loadGroups();
+            if (activeAdminTab === 'competencies') loadCompetencies();
+            if (activeAdminTab === 'configuration') loadConfiguration();
+        }
+    });
 });

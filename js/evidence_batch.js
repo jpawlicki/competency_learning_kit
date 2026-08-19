@@ -371,7 +371,11 @@ export function initEvidenceBatchUI(AppState, storage, classroom, uiPrefs) {
     });
 
     // Initial load
-    renderLearners();
-    renderCompetencies();
-    loadClassrooms();
+    const doInit = () => {
+        renderLearners();
+        renderCompetencies();
+        loadClassrooms();
+    };
+    AppState.addEventListener('load-complete', doInit);
+    if (AppState.isLoaded) doInit();
 }

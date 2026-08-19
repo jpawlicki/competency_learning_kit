@@ -19,9 +19,9 @@ export function initSetupReports(AppState, storage) {
     let currentTemplateId = null;
     let currentData = []; // The parsed config array
 
-    async function loadData() {
-        const data = await AppState.load();
-        if (!data) return;
+    function loadData() {
+        if (!AppState.isLoaded) return;
+        const data = AppState.rootData;
 
         allCompetencies = data['Competency'] || [];
         compGroups = data['Competency Group'] || [];
@@ -30,8 +30,8 @@ export function initSetupReports(AppState, storage) {
         renderList();
     }
 
-    // Call loadData immediately to initialize the UI state
-    loadData();
+    AppState.addEventListener('load-complete', loadData);
+    if (AppState.isLoaded) loadData();
 
     // Also re-load when data invalidates (e.g., auth changes)
     // We can expose a refresh method if needed, but for now we just observe

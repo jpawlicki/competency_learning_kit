@@ -879,5 +879,6 @@ export function initAssessmentsView(AppState, uiPrefs, storage) {
     }
 
     // Initial load for custom elements
-    renderAssessGroupSelect();
+    AppState.addEventListener('load-complete', renderAssessGroupSelect);
+    if (AppState.isLoaded) renderAssessGroupSelect();
 }

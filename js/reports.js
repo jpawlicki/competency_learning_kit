@@ -50,12 +50,14 @@ export function initReportsView(AppState, storage) {
     });
 
     // Listen for auth/data load
-    window.addEventListener('clk-data-loaded', () => {
+    const doInit = () => {
         if (viewReports.classList.contains('active')) {
             renderSelectors();
             renderReport();
         }
-    });
+    };
+    AppState.addEventListener('load-complete', doInit);
+    if (AppState.isLoaded) doInit();
 
     learnerListEl.addEventListener('change', (e) => {
         if (!e.detail) return;

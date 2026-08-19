@@ -418,6 +418,25 @@ input:checked + .slider:before {
     transition: opacity var(--transition-smooth);
 }
 
+#data-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(2px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: var(--primary);
+    font-size: 1.2rem;
+    font-weight: 500;
+    transition: opacity var(--transition-smooth);
+}
+
 .top-nav.auth-refresh-active {
     position: relative;
     z-index: 101; /* bring it above the overlay explicitly if needed */
