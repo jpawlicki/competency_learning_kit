@@ -440,7 +440,7 @@ export class Storage {
     const learnerData = await this.driveRequest('/files?fields=id&supportsAllDrives=true', {
       method: 'POST',
       body: JSON.stringify({
-        name: 'Learner Data',
+        name: name + ' (Learner Data)',
         mimeType: 'application/vnd.google-apps.spreadsheet',
         parents: [studentFolder.id]
       })
@@ -464,7 +464,7 @@ export class Storage {
     const artifactsFolder = await this.driveRequest('/files?fields=id&supportsAllDrives=true', {
       method: 'POST',
       body: JSON.stringify({
-        name: 'Artifacts',
+        name: name + '(Artifacts)',
         mimeType: 'application/vnd.google-apps.folder',
         parents: [studentFolder.id]
       })
