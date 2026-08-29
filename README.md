@@ -11,6 +11,8 @@ CLK's mission is:
   2. and share that progress with the learner and their advocates
   3. while remaining completely free, low-risk, and easy-to-adopt.
 
+CLK can be accessed [online](https://competency-learning-kit.web.app).
+
 Although CLK was developed to aid a specific K-8 educational institution, it is
 useful anywhere a competency-based learning program exists, even in the
 business setting.

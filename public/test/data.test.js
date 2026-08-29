@@ -1,5 +1,5 @@
 import { describe, it, assertEquals, assertTrue } from './test_runner.js';
-import { UIPrefs } from '../public/js/data.js';
+import { UIPrefs } from '../js/data.js';
 
 describe('UIPrefs (js/data.js)', () => {
     it('stores and retrieves access token', () => {

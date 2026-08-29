@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competency Learning Kit</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <nav class="main-menu" aria-label="Main Navigation">
+            <button class="nav-btn active" data-target="view-evidence">
+                <span class="material-symbols-outlined" aria-hidden="true">note_add</span>
+                Evidence
+            </button>
+            <button class="nav-btn" data-target="view-assessments">
+                <span class="material-symbols-outlined" aria-hidden="true">grading</span>
+                Assessments
+            </button>
+            <button class="nav-btn" data-target="view-reports">
+                <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
+                Reports
+            </button>
+            <button class="nav-btn" data-target="view-admin">
+                <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+                Setup
+            </button>
+        </nav>
+        <div class="nav-controls">
+            <div id="global-loading" class="hidden" style="display: flex; align-items: center; gap: 0.25rem; color: var(--accent); font-size: 0.85rem; font-weight: 500;">
+                <span class="material-symbols-outlined" style="animation: spin 1s linear infinite; font-size: 1.1rem;">sync</span>
+                Loading...
+            </div>
+            <clk-login-state id="login-state"></clk-login-state>
+        </div>
+    </header>
+
+    <div id="auth-refresh-overlay" class="hidden"></div>
+    <div id="data-loading-overlay" class="hidden">
+        <span class="material-symbols-outlined" style="animation: spin 1s linear infinite; font-size: 3rem; margin-bottom: 1rem;">sync</span>
+        Loading Application Data...
+    </div>
+
+    <main class="content-area">
+        <!-- Evidence View -->
+        <section id="view-evidence" class="view-section active" aria-label="Evidence Entry">
+            <div class="view-header">
+                <h2>Evidence Entry</h2>
+                <p>Record observations and link artifacts for learners.</p>
+            </div>
+            
+            <div class="card" id="evidence_manager">
+                <div class="log-container" style="margin-top: 0; margin-bottom: 24px; border-top: none; padding: 0;">
+                    <label class="form-label">1. Evidence Name & Classroom Link</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="field-group">
+                            <label class="form-label-sm">Course</label>
+                            <select id="evidence_classroom_selector" class="input-text" style="width: 100%;">
+                                <option value="">-- No Classroom Sync --</option>
+                            </select>
+                        </div>
+                        <div class="field-group">
+                            <label class="form-label-sm">Assignment</label>
+                            <select id="evidence_assignment_selector" class="input-text" style="width: 100%;" disabled>
+                                <option value="">-- Select Course First --</option>
+                                <option value="NEW">Create New Assignment...</option>
+                            </select>
+                        </div>
+                        <div class="field-group full-width" id="evidence_name_container" style="grid-column: 1 / -1;">
+                            <label id="evidence_name_label" class="form-label-sm">Evidence Name</label>
+                            <input type="text" id="evidence_name" class="input-text" style="width: 100%;" placeholder="Evidence Name (e.g. Unit 1 assessment)">
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; margin-top: 24px;">
+                    <div>
+                        <div class="field-group" style="margin-bottom: 16px;">
+                            <label class="form-label">2. Select Learners</label>
+                            <learner-selector id="evidence_learner_list" class="scrollable-panel flex-col gap-sm">
+                                <div class="placeholder-text" style="font-size: 0.9rem;">Loading learners...</div>
+                            </learner-selector>
+                        </div>
+                    </div>
+
+                    <div id="evidence_form" class="hidden flex-col gap-xl">
+                        <div class="field-group">
+                            <label class="form-label">3. Select Competencies to Rate</label>
+                            <competency-selector id="evidence_comp_list" style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: var(--surface); max-height: 400px; overflow-y: auto; display: block;"></competency-selector>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="form-label">4. Demonstrated Competencies</label>
+                            <div style="border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; background: #fff;">
+                                <table id="batch_rating_table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                                    <thead>
+                                        <tr>
+                                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border); width: 200px; position: sticky; left: 0; background: var(--bg); z-index: 10;">Learner</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="batch_rating_tbody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="form-label">5. Educator's Note / Narrative (Shared)</label>
+                            <textarea id="evidence_note" class="input-text" style="width: 100%;" rows="3" placeholder="These notes will be applied to all selected learners."></textarea>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="form-label">6. Upload Artifact (Optional)</label>
+                            <input type="file" id="evidence_file" multiple style="margin-bottom: 8px; display: block;">
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Selected files will be uploaded and copied into each learner's artifacts folder separately.</span>
+                        </div>
+
+                        <button id="submit_evidence_button" class="btn-primary" style="margin-top: 8px; align-self: flex-start; padding: 0.75rem 1.5rem;">Submit Evidence</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Assessments View -->
+        <section id="view-assessments" class="view-section hidden" aria-label="Assessments">
+            <div class="view-header">
+                <h2>Assessments</h2>
+                <p>Review prior evidence and record summative assessments.</p>
+            </div>
+            <div class="two-column-layout">
+                <!-- Left Sidebar: Learner Multi-select -->
+                <div class="field-group">
+                    <label class="form-label">1. Select Learners</label>
+                    <learner-selector id="assess_learner_list" class="scrollable-panel flex-col gap-sm" style="max-height: calc(100vh - 250px);">
+                        <div class="placeholder-text">Loading learners...</div>
+                    </learner-selector>
+                </div>
+
+                <!-- Main Area: The Assessment Grid -->
+                <div class="field-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label class="form-label" style="margin-bottom: 0;">2. Summative Assessments</label>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="assess_save_all" class="btn-primary floating-save-btn" style="display: none;">Save Changes</button>
+                            <competency-group-selector id="assess_group_select" style="width: auto;"></competency-group-selector>
+                        </div>
+                    </div>
+                    <div id="assess_grid_container" class="flex-col gap-xl" style="padding-right: 8px; padding-bottom: 120px;">
+                        <div id="assess_initial_placeholder" class="placeholder-text card">Select learners from the left to begin.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reports View -->
+        <section id="view-reports" class="view-section hidden" aria-label="Reports">
+            <div class="view-header flex-between">
+                <div>
+                    <h2>Reports</h2>
+                    <p>Visualize learner progress.</p>
+                </div>
+            </div>
+            
+            <div class="two-column-layout">
+                <!-- Left Sidebar: Selectors -->
+                <div class="field-group" style="display: flex; flex-direction: column; gap: 16px;">
+                    <div class="field-group">
+                        <label class="form-label">1. Select Learners</label>
+                        <learner-selector id="report_learner_list" class="scrollable-panel flex-col gap-sm" style="max-height: 250px;">
+                            <div class="placeholder-text">Loading learners...</div>
+                        </learner-selector>
+                    </div>
+                    <div class="field-group" id="report_comp_group_container">
+                        <label class="form-label">2. Select Competency Group</label>
+                        <competency-group-selector id="report_comp_group_list"></competency-group-selector>
+                    </div>
+                    <div class="field-group hidden" id="report_template_container">
+                        <label class="form-label">2. Select Report Template</label>
+                        <select id="report_template_list" class="select-filter" style="width: 100%;">
+                            <option value="">Choose a template...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Main Area: The Report -->
+                <div class="field-group" style="display: flex; flex-direction: column;">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-report="matrix">Class Matrix</button>
+                        <button class="tab-btn" data-report="individual">Learner Report</button>
+                    </div>
+                    <div class="card report-container" id="report_content_area" style="overflow-x: auto; flex: 1; min-height: 400px; padding: 16px;">
+                        <p class="placeholder-text">Select learners and competencies to view the report.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Setup View -->
+        <section id="view-admin" class="view-section hidden" aria-label="Setup">
+            <div class="view-header">
+                <h2>Setup</h2>
+                <p>Manage program architecture and settings.</p>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" data-admin-tab="students">Learners</button>
+                <button class="tab-btn" data-admin-tab="competencies">Competency Architecture</button>
+                <button class="tab-btn" data-admin-tab="reports">Report Templates</button>
+            </div>
+            
+            <!-- Students Tab -->
+            <div id="admin-tab-students" class="admin-tab-content active">
+                <div class="two-column-layout">
+                    
+                    <!-- Left: Groups -->
+                    <div class="card" class="flex-col gap-md">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0;">Groups</h3>
+                            <button id="add_learner_group_btn" class="btn-primary" style="padding: 0.25rem 0.5rem; width: auto; font-size: 0.8rem;">+ Group</button>
+                        </div>
+                        <ul id="learner_groups_list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem;">
+                            <li class="placeholder-text">Loading...</li>
+                        </ul>
+                        <!-- Learner Group Edit Form -->
+                        <div id="learner_group_edit_form" class="hidden" style="border-top: 1px solid var(--border); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <h4 style="margin: 0; font-size: 0.9rem;" id="learner_group_form_title">New Group</h4>
+                            <input type="hidden" id="learner_group_id">
+                            <input type="text" id="learner_group_name" placeholder="Group Name" style="font-size: 0.9rem; padding: 0.25rem;">
+                            <textarea id="learner_group_desc" rows="2" placeholder="Description" style="font-size: 0.9rem; padding: 0.25rem;"></textarea>
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <button id="cancel_learner_group_btn" class="btn-login" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); width: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;">Cancel</button>
+                                <button id="save_learner_group_btn" class="btn-primary" style="width: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;">Save</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Learners -->
+                    <div class="card" style="display: flex; flex-direction: column; gap: 1rem; min-height: 400px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0;">Current Learners</h3>
+                            <button id="toggle_add_learner_btn" class="btn-primary" style="padding: 0.25rem 0.5rem; width: auto; font-size: 0.8rem;">+ Learners</button>
+                        </div>
+                        
+                        <!-- Add Learners Section (Hidden by default) -->
+                        <div id="add_learner_section" class="hidden" style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 0.5rem;">
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="new_student_name">Learner Name(s)</label>
+                                <input type="text" id="new_student_name" placeholder="First Last (comma separated for multiple)">
+                            </div>
+                            
+                            <label style="margin-top: 0.5rem; display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem;">Assign to Groups (Optional)</label>
+                            <div class="card" style="max-height: 150px; overflow-y: auto; padding: 0.5rem; margin-bottom: 1rem;" id="learner_group_checkboxes">
+                                <div class="placeholder-text" style="font-size: 0.8rem;">No groups available.</div>
+                            </div>
+
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <button id="cancel_add_learner_btn" class="btn-login" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); width: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;">Cancel</button>
+                                <button id="add_student_btn" class="btn-primary" style="width: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;">Add Learner(s)</button>
+                            </div>
+                        </div>
+
+                        <!-- Current Learners List -->
+                        <div style="flex: 1; overflow-y: auto;">
+                            <div id="students_loading" class="placeholder-text hidden">Loading learners...</div>
+                            <ul id="student_list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                                <li class="placeholder-text">No learners loaded.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Google Classroom Import -->
+                    <div class="section-divider">
+                        <h4 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">Import from Google Classroom</h4>
+                        <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                            <button id="load_classrooms_btn" class="btn-login" style="width: auto; background: var(--bg); color: var(--text-main); border: 1px solid var(--border);">Load Courses</button>
+                            <div id="classroom_select_container" class="hidden" style="display: flex; gap: 1rem; align-items: flex-end; flex: 1;">
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label for="classroom_select">Select Course</label>
+                                    <select id="classroom_select" class="select-filter" style="width: 100%;">
+                                        <option value="">Choose a course...</option>
+                                    </select>
+                                </div>
+                                <button id="import_classroom_btn" class="btn-primary" style="width: auto;">Import Learners</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="admin-tab-competencies" class="admin-tab-content hidden">
+                <div class="two-column-layout">
+                    
+                    <!-- MASTER: Groups List -->
+                    <div class="card" class="flex-col gap-md">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0;">Groups</h3>
+                            <button id="add_group_btn" class="btn-primary" style="padding: 0.25rem 0.5rem; width: auto; font-size: 0.8rem;">+ Group</button>
+                        </div>
+                        <ul id="competency_groups_list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem;">
+                            <li class="placeholder-text">Loading...</li>
+                        </ul>
+                        
+                        <!-- Group Edit Form -->
+                        <div id="group_edit_form" class="hidden" style="border-top: 1px solid var(--border); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <h4 style="margin: 0; font-size: 0.9rem;" id="group_form_title">New Group</h4>
+                            <input type="hidden" id="group_id">
+                            <input type="text" id="group_name" placeholder="Group Name" style="font-size: 0.9rem; padding: 0.25rem;">
+                            <textarea id="group_desc" rows="2" placeholder="Description" style="font-size: 0.9rem; padding: 0.25rem;"></textarea>
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <button id="cancel_group_btn" class="btn-login" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); width: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;">Cancel</button>
+                                <button id="save_group_btn" class="btn-primary" style="width: auto; font-size: 0.8rem; padding: 0.25rem 0.5rem;">Save</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DETAIL: Competencies List / Edit -->
+                    <div class="card" style="display: flex; flex-direction: column; gap: 1rem; min-height: 400px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 id="detail_group_title" style="margin: 0;">Select a Group</h3>
+                            <button id="add_competency_btn" class="btn-primary hidden" style="padding: 0.25rem 0.5rem; width: auto; font-size: 0.8rem;">+ Competency</button>
+                        </div>
+                        
+                        <div id="competencies_loading" class="placeholder-text hidden">Saving architecture...</div>
+                        
+                        <div id="competency_list_container">
+                            <ul id="competency_list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                                <li class="placeholder-text">Select a group on the left to view its competencies.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Competency Edit Form (Hidden by default) -->
+                        <div id="competency_edit_form" class="hidden" style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <h4 style="margin: 0; font-size: 1rem;" id="comp_form_title">Edit Competency</h4>
+                            <input type="hidden" id="comp_id">
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="comp_name">Name</label>
+                                <input type="text" id="comp_name" placeholder="e.g. Addition to 10">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="comp_desc">Description (Optional)</label>
+                                <textarea id="comp_desc" rows="3" placeholder="Provide more details..."></textarea>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="comp_color">Color Tag</label>
+                                <div id="comp_color_swatches" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;"></div>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="color" id="comp_color" value="#94a3b8" style="width: 40px; height: 40px; padding: 0; border: 1px solid var(--border); border-radius: 4px; cursor: pointer;" title="Custom Color">
+                                    <span style="font-size: 0.85rem; color: var(--text-muted);">Custom Color</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="comp_groups">Assigned Groups</label>
+                                <select id="comp_groups" multiple style="height: 100px;"></select>
+                                <small style="color: var(--text-muted);">Hold Ctrl/Cmd to select multiple</small>
+                            </div>
+
+
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="comp_related">Related Links (Continuing/Similar)</label>
+                                <select id="comp_related" multiple style="height: 100px;"></select>
+                                <small style="color: var(--text-muted);">Hold Ctrl/Cmd to select multiple</small>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 0.5rem;">
+                                <button id="cancel_comp_btn" class="btn-login" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); width: auto;">Cancel</button>
+                                <button id="save_comp_btn" class="btn-primary" style="width: auto;">Save Competency</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Templates Tab -->
+            <div id="admin-tab-reports" class="admin-tab-content hidden">
+                <div class="two-column-layout">
+                    <!-- Left: Report Templates List -->
+                    <div class="card" class="flex-col gap-md">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0;">Templates</h3>
+                            <button id="add_report_template_btn" class="btn-primary" style="padding: 0.25rem 0.5rem; width: auto; font-size: 0.8rem;">+ Template</button>
+                        </div>
+                        <ul id="report_templates_list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem;">
+                            <li class="placeholder-text">Loading...</li>
+                        </ul>
+                    </div>
+
+                    <!-- Right: Editor -->
+                    <div class="card" style="display: flex; flex-direction: column; gap: 1rem; min-height: 400px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 id="report_template_title" style="margin: 0;">Select a Template</h3>
+                        </div>
+
+                        <div id="report_template_editor" class="hidden" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <!-- Top: Competencies & Form Fields side-by-side -->
+                            <div style="display: flex; gap: 1rem;">
+                                <!-- Left: Form Fields -->
+                                <div style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="rt_name">Template Name</label>
+                                        <input type="text" id="rt_name" placeholder="e.g. End of Year Report">
+                                    </div>
+                                    
+                                    <div style="display: flex; gap: 1rem;">
+                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                            <label for="rt_levels">Levels</label>
+                                            <input type="number" id="rt_levels" min="1" max="10" value="4">
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; gap: 1rem;">
+                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                            <label for="rt_inner_radius">Inner Radius</label>
+                                            <input type="number" id="rt_inner_radius" min="0" max="500" value="100">
+                                        </div>
+                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                            <label for="rt_outer_radius">Outer Radius</label>
+                                            <input type="number" id="rt_outer_radius" min="10" max="1000" value="500">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Right: Competencies Selector -->
+                                <div style="flex: 1; border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; max-height: 250px; overflow-y: auto;">
+                                    <h4 style="margin-top: 0; margin-bottom: 0.5rem;">Competencies</h4>
+                                    <div id="rt_competency_selector" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                        <!-- populated dynamically -->
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Bottom: Sunburst Preview Area -->
+                            <div style="width: 100%; aspect-ratio: 1 / 1; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fafafa;">
+                                <clk-sunburst id="rt_sunburst_preview"></clk-sunburst>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 0.5rem;">
+                                <button id="cancel_rt_btn" class="btn-login" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); width: auto;">Cancel</button>
+                                <button id="save_rt_btn" class="btn-primary" style="width: auto;">Save Template</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="admin-tab-settings" class="admin-tab-content hidden">
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <h3 id="settings_title">Project Initialization</h3>
+                    <p id="settings_desc" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                        Connect your Google Drive to manage the "Competency Learning Kit Data" folder. If you haven't set up the project yet, enter your institution name and initialize it.
+                    </p>
+                    <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label for="institution_name">Institution Name</label>
+                            <input type="text" id="institution_name" placeholder="e.g. Springfield Elementary">
+                        </div>
+                        <button id="init_project_btn" class="btn-primary" style="width: auto;">Initialize Project</button>
+                    </div>
+                </div>
+
+                <div class="card" style="border-color: #fca5a5; background-color: #fef2f2;">
+                    <h3 style="color: #ef4444;">Danger Zone</h3>
+                    <p style="color: #991b1b; font-size: 0.9rem; margin-bottom: 1rem;">
+                        This will permanently delete the entire "Competency Learning Kit Data" folder and all learner records from your Google Drive.
+                    </p>
+                    <button id="delete_project_btn" class="btn-primary" style="background-color: #ef4444; width: auto;">Delete Entire Project</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Observation Details Modal -->
+    <div id="obs_detail_modal" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+        <div class="card" style="width: 100%; max-width: 500px; background: var(--surface); padding: 24px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <h3 id="obs_modal_title" style="margin: 0; font-size: 1.1rem;">Observation Details</h3>
+                <button id="obs_modal_close" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            <div id="obs_modal_content" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Wizard (activates when project folder is missing) -->
+    <clk-setup-wizard id="setup-wizard"></clk-setup-wizard>
+
+    <!-- Load Google Identity Services (GIS) -->
+    <script async defer src="https://accounts.google.com/gsi/client" onload="window.gisLoaded && window.gisLoaded()"></script>
+    <script type="module" src="js/components/login_state.js"></script>
+    <script type="module" src="js/components/setup_wizard.js"></script>
+    <script type="module" src="js/components/learner_selector.js"></script>
+    <script type="module" src="js/components/competency_selector.js"></script>
+    <script type="module" src="js/components/competency_group_selector.js"></script>
+    <script type="module" src="js/components/sunburst.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

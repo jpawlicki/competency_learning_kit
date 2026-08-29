@@ -1,5 +1,5 @@
 import { describe, it, assertEquals, assertTrue } from './test_runner.js';
-import { createElement, setElementContents } from '../public/js/utils.js';
+import { createElement, setElementContents } from '../js/utils.js';
 
 describe('utils.js', () => {
     it('createElement creates a basic element', () => {
