@@ -213,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        document.querySelector("nav > h1.nav-brand").style.display = "none";
         loginState.setLoggedIn(email);
 
         try {
